@@ -1,0 +1,136 @@
+AI GOVERNANCE IN PROFESSIONAL SERVICES: A FRAMEWORK FOR RESPONSIBLE DEPLOYMENT
+
+Meridian Centre for Technology Policy
+Briefing Paper No. 14 | March 2025
+
+---
+
+EXECUTIVE SUMMARY
+
+Professional services firms — consultancies, law firms, accountancies, and financial advisers — occupy an unusual position in the AI governance landscape. They are simultaneously among the most active adopters of AI-assisted work and among the most trusted intermediaries through which organisations understand and manage AI risk. This dual role creates obligations that go beyond regulatory compliance.
+
+This paper sets out a framework for responsible AI deployment in professional services, drawing on the EU AI Act, the NIST AI Risk Management Framework, and the International AI Safety Report 2025. It argues that professional services firms should hold themselves to a higher standard than minimum legal compliance — not as a commercial gesture, but because client trust is the foundational asset of the sector.
+
+---
+
+1. THE PROFESSIONAL SERVICES CONTEXT
+
+Professional services firms handle sensitive client information as a matter of course: legal strategies, financial positions, organisational vulnerabilities, and competitive plans. The introduction of AI systems into this environment raises questions that differ in character from those faced by, say, a consumer technology company.
+
+Three features of the professional services context are particularly relevant.
+
+First, client data is typically unique and confidential. Unlike consumer products that process large volumes of broadly similar data, professional services work often involves bespoke, deeply sensitive material. The risk of inadvertent disclosure or misuse is correspondingly higher.
+
+Second, professional judgement is the product. When a client engages a consultant or solicitor, they are buying the judgement of a qualified professional, not a computational output. The introduction of AI systems that influence or generate professional recommendations raises questions about where accountability sits when advice turns out to be wrong.
+
+Third, the regulatory environment is heterogeneous. A single global professional services firm may be subject to the EU AI Act in Brussels, sector-specific financial AI guidance from the FCA in London, and emerging state-level AI legislation in the United States — all simultaneously. Governance frameworks must be designed to be jurisdiction-aware.
+
+---
+
+2. RISK CLASSIFICATION UNDER THE EU AI ACT
+
+The EU AI Act's risk-based approach provides a useful starting point for professional services firms. The Act identifies four risk categories: unacceptable risk (prohibited), high risk (heavily regulated), limited risk (transparency obligations), and minimal risk (largely unregulated).
+
+Most AI applications in professional services will fall into the limited or minimal risk categories — document summarisation, contract review assistance, research tools, and knowledge management systems. However, some applications may cross into high-risk territory. AI systems that contribute to decisions about creditworthiness, employment, or access to essential services are explicitly listed as high-risk under Annex III of the Act.
+
+Firms should pay particular attention to three classification questions:
+
+a) Does the AI system make, or materially influence, decisions that affect individuals in ways they would reasonably regard as significant?
+
+b) Is the firm acting as a provider (developing or substantially modifying an AI system) or a deployer (using a third-party system in a professional context)? The obligations differ substantially.
+
+c) Does the system process special category personal data as defined under GDPR? If so, the data protection implications compound the AI-specific obligations.
+
+Where classification is uncertain, the Act provides guidance in its recitals, but firms should expect that regulators will take a purposive rather than a literal approach to enforcement in early years.
+
+---
+
+3. THE NIST AI RMF AND PROFESSIONAL SERVICES
+
+The NIST AI Risk Management Framework offers a complementary lens. Where the EU AI Act is a legal instrument with compliance obligations, the NIST framework is a voluntary governance tool designed to help organisations identify, assess, and manage AI risk in practice.
+
+The framework's four functions — Govern, Map, Measure, and Manage — translate well to professional services contexts.
+
+Govern: Establish organisational accountability for AI systems. This means designating clear ownership, creating escalation paths for identified risks, and ensuring that AI governance is not siloed in technology teams but understood and owned by practice leadership.
+
+Map: Identify and document AI use across the firm. Many professional services organisations have AI use concentrated in a small number of high-visibility tools, but shadow use — individual practitioners using consumer AI tools for client work without firm oversight — is widespread. Effective mapping must include this.
+
+Measure: Define and track metrics for AI system behaviour. For a document retrieval and summarisation system, relevant metrics might include retrieval accuracy, hallucination rate, citation accuracy, and user trust calibration (do practitioners appropriately discount AI outputs, or do they over-rely on them?).
+
+Manage: Implement controls and response plans. This includes both technical controls (output filtering, access restrictions, audit logging) and human controls (mandatory review requirements, training, and clear escalation procedures when AI outputs are uncertain or inconsistent).
+
+---
+
+4. TRANSPARENCY AND EXPLAINABILITY
+
+The EU AI Act imposes transparency requirements on limited-risk AI systems: users interacting with AI must know they are interacting with AI. For professional services, the more demanding question is what transparency is owed to clients whose matters are being worked on with AI assistance.
+
+There is no settled consensus on this. Some firms have adopted a disclosure-by-default approach, telling clients that AI tools are used in their work. Others take the view that AI assistance is analogous to other tools and does not require separate disclosure. A small number have adopted opt-out models.
+
+The International AI Safety Report 2025 noted that transparency norms are "in active formation" across professional sectors and that regulators are watching practice develop before legislating. Firms that establish clear, consistently applied policies now are likely to be better positioned when sector-specific guidance emerges.
+
+Explainability — the capacity to account for why an AI system produced a particular output — is a related but distinct requirement. For document retrieval systems, explainability typically takes the form of citation: the system not only produces an answer but identifies the source documents and passages that support it. This is both a transparency mechanism and a check on hallucination.
+
+Citation-based retrieval, where the system is constrained to answer only from documents in its corpus and must provide references, is one of the more tractable explainability approaches available. It does not eliminate the risk of misquotation or selective citation, but it creates an auditable trail and shifts the verification burden to a manageable one: checking the cited passages.
+
+---
+
+5. HUMAN OVERSIGHT IN AI-ASSISTED PROFESSIONAL WORK
+
+The International AI Safety Report 2025 identified inadequate human oversight as one of the primary near-term AI risk factors, distinct from longer-term concerns about advanced AI systems. For professional services, this is the most immediately actionable finding.
+
+Human oversight in practice means more than having a person in the loop. Several conditions must hold for oversight to be meaningful:
+
+The reviewer must have sufficient expertise to identify errors. A junior associate reviewing AI-generated legal analysis who lacks the substantive knowledge to spot a hallucinated precedent is not providing meaningful oversight.
+
+The reviewer must have sufficient time. Productivity pressures create incentives to treat AI output as a first draft to be lightly edited rather than a candidate answer to be critically evaluated. Governance frameworks must account for this.
+
+The reviewer must understand the system's failure modes. AI document retrieval systems are more likely to fail in predictable ways — on questions at the edge of the corpus, on multi-hop reasoning, on documents with ambiguous or contradictory content — than in random ones. Training reviewers to know where to look hardest is more efficient than requiring end-to-end review of every output.
+
+Firms should treat human oversight as a design parameter, not an afterthought. The systems being built should make oversight practical: returning confidence indicators, flagging low-similarity retrievals, and surfacing uncertainty explicitly rather than projecting false confidence.
+
+---
+
+6. DATA GOVERNANCE AND CORPUS MANAGEMENT
+
+AI systems in professional services are only as reliable as the data they are built on. For retrieval-augmented systems — where the AI answers questions by searching a document corpus — corpus management is a first-order governance concern.
+
+A corpus is always a snapshot. Documents go out of date. Regulatory guidance is superseded. Internal policies change. A retrieval system that returns answers based on superseded guidance is not merely unhelpful; it is actively misleading if users do not know the corpus may be stale.
+
+Firms deploying retrieval-augmented systems should address three corpus governance questions explicitly:
+
+Provenance: Where did each document come from, and who has verified that it is accurate and authorised for use? This is particularly important for corpora that mix public documents (legislation, regulatory guidance) with internal materials.
+
+Currency: How often is the corpus refreshed, and what triggers an out-of-cycle update? Regulatory changes and significant court decisions should trigger corpus updates promptly rather than waiting for a scheduled refresh cycle.
+
+Scope: What is the corpus designed to answer, and what is explicitly out of scope? A system that cannot answer a question should say so, not retrieve the nearest available document and confabulate an answer from it. Scope boundaries should be documented and enforced at the system level where possible.
+
+---
+
+7. RECOMMENDATIONS
+
+Based on the foregoing analysis, the Meridian Centre makes the following recommendations to professional services firms deploying or planning to deploy AI systems.
+
+1. Map AI use across the firm, including shadow use, before implementing governance controls. Governance frameworks built on incomplete inventories will have predictable gaps.
+
+2. Classify each identified AI system using the EU AI Act's risk categories. Seek legal advice where classification is uncertain, particularly for systems that influence decisions about individuals.
+
+3. Adopt the NIST AI RMF's four functions as a governance scaffold. Assign ownership, measure what matters, and treat management controls as live documents rather than one-time compliance artefacts.
+
+4. Establish clear transparency policies covering both internal use and client disclosure. Apply them consistently and review them as regulatory guidance develops.
+
+5. Design human oversight into systems from the start. Define who reviews what, with what expertise, and with what time allocation. Treat oversight as a design constraint, not a check on a finished system.
+
+6. Implement corpus governance for all retrieval-augmented systems. Document provenance, establish currency review cycles, and define scope explicitly.
+
+7. Treat citation as a minimum explainability standard for document retrieval systems. Systems that do not return source references should be regarded as unsuitable for client-facing professional use.
+
+---
+
+ABOUT THIS PAPER
+
+This paper was produced by the Meridian Centre for Technology Policy, an independent research organisation. It does not represent legal advice. Readers should seek qualified legal and regulatory counsel before making compliance decisions.
+
+The Meridian Centre receives funding from charitable foundations and research councils. It does not accept funding from commercial AI developers or professional services firms.
+
+© 2025 Meridian Centre for Technology Policy. Reproduction permitted for non-commercial purposes with attribution.
