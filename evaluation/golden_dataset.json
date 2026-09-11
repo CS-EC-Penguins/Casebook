@@ -1,0 +1,115 @@
+[
+  {
+    "question": "How does the AI RMF define an AI system?",
+    "ground_truth": "an engineered or machine-based system that can, for a given set of objectives, generate outputs such as predictions, recommendations, or decisions influencing real or virtual environments",
+    "source_docs": [
+      "nist-ai-rmf.txt"
+    ]
+  },
+  {
+    "question": "What are the four functions in the AI RMF Core?",
+    "ground_truth": "GOVERN, MAP, MEASURE, and MANAGE",
+    "source_docs": [
+      "nist-ai-rmf.txt"
+    ]
+  },
+  {
+    "question": "How does the AI RMF define risk?",
+    "ground_truth": "the composite measure of an event's probability of occurring and the magnitude or degree of the consequences of the corresponding event",
+    "source_docs": [
+      "nist-ai-rmf.txt"
+    ]
+  },
+  {
+    "question": "Which characteristics does the Framework identify for trustworthy AI systems?",
+    "ground_truth": "valid and reliable, safe, secure and resilient, accountable and transparent, explainable and interpretable, privacy-enhanced, and fair with harmful bias managed",
+    "source_docs": [
+      "nist-ai-rmf.txt"
+    ]
+  },
+  {
+    "question": "What does the MANAGE function entail?",
+    "ground_truth": "allocating risk resources to mapped and measured risks on a regular basis and as defined by the GOVERN function",
+    "source_docs": [
+      "nist-ai-rmf.txt"
+    ]
+  },
+  {
+    "question": "How many independent experts guided the International AI Safety Report 2026?",
+    "ground_truth": "over 100 independent experts",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What does the Report mean by general-purpose AI?",
+    "ground_truth": "AI models and systems that can perform a wide variety of tasks",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What are the three categories of general-purpose AI risk?",
+    "ground_truth": "malicious use, malfunctions, and systemic risks",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What percentage of vulnerabilities did an AI agent identify in one competition?",
+    "ground_truth": "77% of the vulnerabilities present in real software",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What are loss-of-control scenarios?",
+    "ground_truth": "scenarios where AI systems operate outside of anyone’s control, with no clear path to regaining control",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What three broad categories of technical safeguards does the Report identify?",
+    "ground_truth": "techniques for developing safer models; techniques used during deployment for monitoring and control; and techniques that support post-deployment ecosystem monitoring",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What does societal resilience mean?",
+    "ground_truth": "the ability of societal systems to resist, absorb, recover from, and adapt to shocks and harms",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  }, 
+
+  {
+    "question": "What is the most immediately actionable finding of the meridian ai governance report for the professional services industry?",
+    "ground_truth": "The most immediately actionable finding is that inadequate human oversight is one of the primary near-term AI risk factors",
+    "source_docs": [
+      "meridian-ai-governance-report.txt"
+    ]
+  },
+  {
+    "question": "What are the four functions of the NIST AI Risk Management Framework?",
+    "ground_truth": "The framework's four functions are: Govern, Map, Measure, and Manage. Govern: Establish organisational accountability for AI systems. Map: Identify and document AI use across the firm. Measure: Define and track metrics for AI system behaviour. Manage: Implement controls and response plans.",
+    "source_docs": [
+      "meridian-ai-governance-report.txt"
+    ]
+  },
+  {
+    "question": "Which approach is one of the more tractable explainability approaches available?",
+    "ground_truth": "Citation-based retrieval, where the system is constrained to answer only from documents in its corpus and must provide references, is one of the more tractable explainability approaches available. It does not eliminate the risk of misquotation or selective citation, but it creates an auditable trail and shifts the verification burden to a manageable one: checking the cited passages.",
+    "source_docs": [
+      "meridian-ai-governance-report.txt"
+    ]
+  },
+  {
+    "question": "What conditions must hold for human oversight to be meaningful in AI-Assisted professional work?",
+    "ground_truth": "The reviewer must have sufficient expertise to identify errors. The reviewer must have sufficient time. The reviewer must understand the system's failure modes. Firms should treat human oversight as a design parameter, not an afterthought. The systems being built should make oversight practical: returning confidence indicators, flagging low-similarity retrievals, and surfacing uncertainty explicitly rather than projecting false confidence.",
+    "source_docs": [
+      "meridian-ai-governance-report.txt"
+    ]
+  }
+]

@@ -10,6 +10,7 @@ step at a time, and you run each step on its own:
     python pipeline.py retrieve "a question"  # show the passages that come back
     python pipeline.py prompt "a question"    # print the prompt without calling the model
     python pipeline.py ask "a question"       # the whole thing, end to end
+    python pipeline.py ask-rewritten "a question"  # rewrite for retrieval, then answer
 
 Run `index` once. It costs money, takes a couple of minutes, and drops whatever
 was in the store before. `split`, `retrieve` and `ask` are cheap and you can run
@@ -21,27 +22,24 @@ corpus, and you choose them properly for Casebook this afternoon.
 """
 
 import os
-import re
 import sys
-from pathlib import Path
 
+from langfuse import observe
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_core.documents import Document
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
 from langchain_postgres.vectorstores import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langfuse import observe
 
-
-CORPUS_PATH = "sample_corpus/"
-COLLECTION_NAME = "sample_docs"
+CORPUS_PATH = "new_corpus/"
+COLLECTION_NAME = "casebook_docs"
 EMBEDDING_MODEL = "text-embedding-004"
 CHAT_MODEL = "gemini-2.5-flash"
 
 # DECISION: how much text goes in each chunk, and how much neighbouring chunks
 # share. The chunking lab shows you what happens when you move them.
-CHUNK_SIZE = 1200
-CHUNK_OVERLAP = 200
+CHUNK_SIZE = 800
+CHUNK_OVERLAP = 150
 
 # The splitter tries these in order and only cuts at an arbitrary character
 # position when nothing earlier in the list is available. On this corpus that
@@ -50,7 +48,7 @@ CHUNK_OVERLAP = 200
 SEPARATORS = ["\n\n", "\n", ". ", " ", ""]
 
 # DECISION: how many passages to retrieve for each question.
-TOP_K = 1
+TOP_K = 4
 
 # DECISION: the three things this prompt insists on are why answers stay inside
 # the corpus and arrive with a citation. The grounding lab takes them apart.
@@ -59,220 +57,30 @@ If the answer is not contained in the passages, say "I cannot find this in the a
 For each piece of information you use, cite the source document in the format [Source: filename].
 Do not use your general knowledge. Do not speculate."""
 
+rewrite_prompt = ChatPromptTemplate.from_messages([
+    ("system", (
+        "You optimise user queries for semantic retrieval from a corpus about AI "
+        "governance, AI regulation, AI risk management, and general-purpose AI safety. "
+        "The corpus contains the NIST AI Risk Management Framework 1.0, Regulation "
+        "(EU) 2024/1689 (the EU AI Act), the International AI Safety Report 2026, "
+        "and a report about responsible AI deployment in professional services. "
+        "Rewrite the query using terminology likely to appear in these documents. "
+        "Preserve named documents, jurisdictions, article numbers, dates, organisations, "
+        "and technical terms supplied by the user. Resolve informal wording or common "
+        "abbreviations only when the intended meaning is clear. Do not answer the question "
+        "or introduce claims, facts, or restrictions that are not present in it. If the "
+        "query is already clear and specific, return it substantially unchanged. "
+        "Return only the rewritten query, with no explanation."
+    )),
+    ("human", "{query}")
+])
 
-_ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7,
-          "VIII": 8, "IX": 9, "X": 10, "XI": 11, "XII": 12}
+rewriter = rewrite_prompt | ChatVertexAI(model_name="gemini-2.5-flash", temperature=0)
+
+def rewrite_query(query: str) -> str:
+    return rewriter.invoke({"query": query}).content
 
 
-def _roman(s: str) -> int:
-    return _ROMAN.get(s.upper(), 0)
-
-
-def _breadcrumb(doc_name, chapter, chapter_title, section, section_title,
-                article, article_title, paragraph, point=None) -> str:
-    parts = [doc_name]
-    if chapter:
-        parts.append(f"Chapter {_ROMAN.get(str(chapter), chapter)}: {chapter_title}")
-    if section:
-        parts.append(f"Section {section}: {section_title}")
-    if article:
-        parts.append(f"Article {article}: {article_title}")
-    if paragraph:
-        label = f"Paragraph {paragraph}({point})" if point else f"Paragraph {paragraph}"
-        parts.append(label)
-    return " — ".join(parts)
-
-
-def parse_structured_documents(corpus_path: str = CORPUS_PATH) -> tuple[list[Document], list[str]]:
-    """Parse legal documents with chapter/section/article/paragraph/point structure.
-
-    Expects headings on their own lines in one of these forms (adjust the regex
-    patterns below to match your actual document format):
-        CHAPTER III
-        High-Risk AI Systems
-        Section 2
-        Requirements for high-risk AI systems
-        Article 9
-        Risk management system
-        5. Paragraph text that may run over multiple lines.
-        (a) Point text that may also run over multiple lines.
-
-    Returns (documents, ids) — pass both to build_vector_store().
-    """
-    # ---- regex patterns: tune these to your document's formatting ----
-    RE_CHAPTER  = re.compile(r"^CHAPTER\s+([IVXLC]+)\s*$", re.IGNORECASE)
-    RE_SECTION  = re.compile(r"^Section\s+(\d+)\s*$", re.IGNORECASE)
-    RE_ARTICLE  = re.compile(r"^Article\s+(\d+)\s*$", re.IGNORECASE)
-    RE_PARA     = re.compile(r"^(\d+)\.\s+(.*)")
-    RE_POINT    = re.compile(r"^\(([a-z])\)\s+(.*)")
-    RE_ANNEX    = re.compile(r"^ANNEX\s+([IVXLC]+)\b", re.IGNORECASE)
-    # ------------------------------------------------------------------
-
-    docs: list[Document] = []
-    ids:  list[str]      = []
-
-    for path in sorted(Path(corpus_path).glob("*.txt")):
-        doc_slug = path.stem                        # e.g. "eu-ai-act"
-        doc_name = "EU AI Act"                      # override per file if needed
-        lines    = path.read_text(encoding="utf-8").splitlines()
-
-        chapter_num, chapter_title = None, ""
-        section_num, section_title = None, ""
-        article_num, article_title = None, ""
-        annex_num,   annex_title   = None, ""
-
-        def _collect(start: int, stops) -> tuple[str, int]:
-            """Read continuation lines until a stop pattern matches."""
-            text, i = lines[start], start + 1
-            while i < len(lines):
-                line = lines[i].strip()
-                if any(p.match(line) for p in stops):
-                    break
-                if line:
-                    text += " " + line
-                i += 1
-            return text.strip(), i
-
-        stop_all = [RE_CHAPTER, RE_SECTION, RE_ARTICLE, RE_PARA, RE_POINT, RE_ANNEX]
-
-        i = 0
-        while i < len(lines):
-            line = lines[i].strip()
-
-            # Preamble: nothing before the first CHAPTER is parsed into chunks,
-            # because article_num is None until the first Article heading is seen.
-
-            # Annexes: clear article context and start tracking annex state.
-            m = RE_ANNEX.match(line)
-            if m:
-                chapter_num, chapter_title = None, ""
-                section_num, section_title = None, ""
-                article_num, article_title = None, ""
-                annex_num   = _roman(m.group(1))
-                annex_title = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                i += 2
-                continue
-
-            m = RE_CHAPTER.match(line)
-            if m:
-                chapter_num   = _roman(m.group(1))
-                chapter_title = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                section_num, section_title = None, ""
-                article_num, article_title = None, ""
-                i += 2
-                continue
-
-            m = RE_SECTION.match(line)
-            if m:
-                section_num   = int(m.group(1))
-                section_title = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                article_num, article_title = None, ""
-                i += 2
-                continue
-
-            m = RE_ARTICLE.match(line)
-            if m:
-                article_num   = int(m.group(1))
-                article_title = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                i += 2
-                continue
-
-            m = RE_PARA.match(line)
-            if m and (article_num or annex_num):
-                para_num  = int(m.group(1))
-                para_text, i = _collect(i, stop_all)
-                para_text = re.sub(r"^\d+\.\s+", "", para_text)
-
-                # Collect any points that immediately follow
-                points: list[tuple[str, str]] = []
-                while i < len(lines):
-                    pm = RE_POINT.match(lines[i].strip())
-                    if not pm:
-                        break
-                    point_text, i = _collect(i, stop_all)
-                    point_text = re.sub(r"^\([a-z]\)\s+", "", point_text)
-                    points.append((pm.group(1), point_text))
-
-                if annex_num:
-                    # ---- annex chunk ----
-                    annex_label = f"Annex {annex_num}: {annex_title}"
-                    if points:
-                        for letter, point_text in points:
-                            chunk_id = f"{doc_slug}-annex{annex_num}-p{para_num}-{letter}"
-                            ids.append(chunk_id)
-                            docs.append(Document(
-                                page_content=f"{doc_name} — {annex_label} — Paragraph {para_num}({letter}): {point_text}",
-                                metadata={
-                                    "document":      doc_name,
-                                    "annex":         annex_num,
-                                    "annex_title":   annex_title,
-                                    "paragraph":     para_num,
-                                    "point":         letter,
-                                    "content_type":  "annex",
-                                },
-                            ))
-                    else:
-                        chunk_id = f"{doc_slug}-annex{annex_num}-p{para_num}"
-                        ids.append(chunk_id)
-                        docs.append(Document(
-                            page_content=f"{doc_name} — {annex_label} — Paragraph {para_num}: {para_text}",
-                            metadata={
-                                "document":      doc_name,
-                                "annex":         annex_num,
-                                "annex_title":   annex_title,
-                                "paragraph":     para_num,
-                                "point":         None,
-                                "content_type":  "annex",
-                            },
-                        ))
-                else:
-                    # ---- article chunk ----
-                    if points:
-                        for letter, point_text in points:
-                            chunk_id = f"{doc_slug}-art{article_num}-p{para_num}-{letter}"
-                            crumb    = _breadcrumb(doc_name, chapter_num, chapter_title,
-                                                   section_num, section_title,
-                                                   article_num, article_title,
-                                                   para_num, letter)
-                            ids.append(chunk_id)
-                            docs.append(Document(
-                                page_content=f"{crumb}: {point_text}",
-                                metadata={
-                                    "document":      doc_name,
-                                    "chapter":       chapter_num,
-                                    "section":       section_num,
-                                    "article":       article_num,
-                                    "paragraph":     para_num,
-                                    "point":         letter,
-                                    "article_title": article_title,
-                                    "content_type":  "legal_requirement",
-                                },
-                            ))
-                    else:
-                        chunk_id = f"{doc_slug}-art{article_num}-p{para_num}"
-                        crumb    = _breadcrumb(doc_name, chapter_num, chapter_title,
-                                               section_num, section_title,
-                                               article_num, article_title, para_num)
-                        ids.append(chunk_id)
-                        docs.append(Document(
-                            page_content=f"{crumb}: {para_text}",
-                            metadata={
-                                "document":      doc_name,
-                                "chapter":       chapter_num,
-                                "section":       section_num,
-                                "article":       article_num,
-                                "paragraph":     para_num,
-                                "point":         None,
-                                "article_title": article_title,
-                                "content_type":  "legal_requirement",
-                            },
-                        ))
-                continue
-
-            i += 1
-
-    print(f"Parsed {len(docs)} structured chunks from {corpus_path}")
-    return docs, ids
 
 
 def load_documents(corpus_path: str = CORPUS_PATH):
@@ -314,7 +122,7 @@ def split_documents(documents, separators=None):
     return chunks
 
 
-def build_vector_store(chunks, ids=None):
+def build_vector_store(chunks):
     """Embed every chunk and store it in pgvector.
 
     One call embeds each chunk and writes a row per chunk, holding the text, its
@@ -324,9 +132,6 @@ def build_vector_store(chunks, ids=None):
 
     The rows live in langchain_pg_embedding and the collection itself is a row
     in langchain_pg_collection. There is no table called "sample_docs".
-
-    Pass ids (a list of strings the same length as chunks) to use structured
-    identifiers instead of auto-generated UUIDs.
     """
     embeddings = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
     vector_store = PGVector.from_documents(
@@ -335,7 +140,6 @@ def build_vector_store(chunks, ids=None):
         connection=os.environ["PG_CONNECTION_STRING"],
         collection_name=COLLECTION_NAME,
         pre_delete_collection=True,
-        ids=ids,
     )
     print(f"Stored {len(chunks)} chunks in collection {COLLECTION_NAME!r}")
     return vector_store
@@ -353,6 +157,7 @@ def load_vector_store():
         connection=os.environ["PG_CONNECTION_STRING"],
         collection_name=COLLECTION_NAME,
     )
+
 
 @observe()
 def retrieve(query: str, vector_store, k: int = TOP_K) -> list[dict]:
@@ -390,6 +195,7 @@ def build_prompt(question: str, passages: list[dict]) -> str:
     context = "\n\n".join(numbered)
     return f"{SYSTEM_PROMPT}\n\nPassages:\n{context}\n\nQuestion: {question}"
 
+
 @observe()
 def generate(question: str, passages: list[dict]) -> str:
     """Send the assembled prompt to Gemini and return the answer text.
@@ -401,20 +207,25 @@ def generate(question: str, passages: list[dict]) -> str:
     response = llm.invoke(build_prompt(question, passages))
     return response.content
 
-@observe()
-def ask(question: str, vector_store) -> dict:
-    """Retrieve passages for question, then answer from them.
 
-    Returns the question, the answer, the sources behind it, and the passage
-    text the model saw. Day 3's evaluation harness reads all four.
-    """
-    passages = retrieve(question, vector_store)
+@observe()
+def ask(question: str, vector_store, use_rewriting: bool = False) -> dict:
+    if use_rewriting:
+        retrieval_query = rewrite_query(question)
+    else:
+        retrieval_query = question
+
+    passages = retrieve(retrieval_query, vector_store)
+    answer = generate(question, passages)  # note: original question goes to the model, not the rewritten one
+
     return {
         "question": question,
-        "answer": generate(question, passages),
+        "answer": answer,
         "sources": [p["source"] for p in passages],
         "contexts": [p["content"] for p in passages],
+        "retrieval_query": retrieval_query,
     }
+
 
 
 def cmd_split(separators=None, first=0, last=4):
@@ -425,12 +236,8 @@ def cmd_split(separators=None, first=0, last=4):
         print(f"[source: {chunks[i].metadata.get('source')}]")
 
 
-def cmd_index(structured=False):
-    if structured:
-        docs, ids = parse_structured_documents()
-        build_vector_store(docs, ids=ids)
-    else:
-        build_vector_store(split_documents(load_documents()))
+def cmd_index():
+    build_vector_store(split_documents(load_documents()))
 
 
 def cmd_retrieve(question: str):
@@ -440,8 +247,11 @@ def cmd_retrieve(question: str):
         print(passage["content"][:300])
 
 
-def cmd_ask(question: str):
-    result = ask(question, load_vector_store())
+def cmd_ask(question: str, use_rewriting: bool = False):
+    result = ask(question, load_vector_store(), use_rewriting=use_rewriting)
+    if use_rewriting:
+        print("\nRetrieval query:")
+        print(result["retrieval_query"])
     print("\n" + result["answer"])
     print("\nPassages consulted:")
     for source in result["sources"]:
@@ -457,7 +267,7 @@ def cmd_prompt(question: str):
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     question = sys.argv[2] if len(sys.argv) > 2 else ""
-    needs_question = ("retrieve", "ask", "prompt")
+    needs_question = ("retrieve", "ask", "ask-rewritten", "prompt")
 
     if command == "split":
         # An optional chunk number prints that chunk and the three after it.
@@ -467,15 +277,15 @@ if __name__ == "__main__":
         first = int(question) if question.isdigit() else 0
         cmd_split(separators=[""], first=first, last=first + 4)
     elif command == "index":
-        cmd_index(structured="--structured" in sys.argv)
-    elif command == "index-structured":
-        cmd_index(structured=True)
+        cmd_index()
     elif command in needs_question and not question:
-        print(f'This one needs a question: python pipeline.py {command} "how do bats navigate"')
+        print(f'This one needs a question: python pipeline.py {command} "what are the AI RMF Core functions?"')
     elif command == "retrieve":
         cmd_retrieve(question)
     elif command == "ask":
         cmd_ask(question)
+    elif command == "ask-rewritten":
+        cmd_ask(question, use_rewriting=True)
     elif command == "prompt":
         cmd_prompt(question)
     else:
