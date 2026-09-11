@@ -23,6 +23,7 @@ corpus, and you choose them properly for Casebook this afternoon.
 import os
 import sys
 
+from langfuse import observe
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
 from langchain_postgres.vectorstores import PGVector
@@ -131,6 +132,7 @@ def load_vector_store():
     )
 
 
+@observe()
 def retrieve(query: str, vector_store, k: int = TOP_K) -> list[dict]:
     """Find the k passages closest in meaning to query.
 
@@ -167,6 +169,7 @@ def build_prompt(question: str, passages: list[dict]) -> str:
     return f"{SYSTEM_PROMPT}\n\nPassages:\n{context}\n\nQuestion: {question}"
 
 
+@observe()
 def generate(question: str, passages: list[dict]) -> str:
     """Send the assembled prompt to Gemini and return the answer text.
 
@@ -178,6 +181,7 @@ def generate(question: str, passages: list[dict]) -> str:
     return response.content
 
 
+@observe()
 def ask(question: str, vector_store) -> dict:
     """Retrieve passages for question, then answer from them.
 
