@@ -10,6 +10,7 @@ step at a time, and you run each step on its own:
     python pipeline.py retrieve "a question"  # show the passages that come back
     python pipeline.py prompt "a question"    # print the prompt without calling the model
     python pipeline.py ask "a question"       # the whole thing, end to end
+    python pipeline.py ask-rewritten "a question"  # rewrite for retrieval, then answer
 
 Run `index` once. It costs money, takes a couple of minutes, and drops whatever
 was in the store before. `split`, `retrieve` and `ask` are cheap and you can run
@@ -25,6 +26,7 @@ import sys
 
 from langfuse import observe
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
 from langchain_postgres.vectorstores import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -54,6 +56,31 @@ SYSTEM_PROMPT = """You are a research assistant. Answer the user's question usin
 If the answer is not contained in the passages, say "I cannot find this in the available documents."
 For each piece of information you use, cite the source document in the format [Source: filename].
 Do not use your general knowledge. Do not speculate."""
+
+rewrite_prompt = ChatPromptTemplate.from_messages([
+    ("system", (
+        "You optimise user queries for semantic retrieval from a corpus about AI "
+        "governance, AI regulation, AI risk management, and general-purpose AI safety. "
+        "The corpus contains the NIST AI Risk Management Framework 1.0, Regulation "
+        "(EU) 2024/1689 (the EU AI Act), the International AI Safety Report 2026, "
+        "and a report about responsible AI deployment in professional services. "
+        "Rewrite the query using terminology likely to appear in these documents. "
+        "Preserve named documents, jurisdictions, article numbers, dates, organisations, "
+        "and technical terms supplied by the user. Resolve informal wording or common "
+        "abbreviations only when the intended meaning is clear. Do not answer the question "
+        "or introduce claims, facts, or restrictions that are not present in it. If the "
+        "query is already clear and specific, return it substantially unchanged. "
+        "Return only the rewritten query, with no explanation."
+    )),
+    ("human", "{query}")
+])
+
+rewriter = rewrite_prompt | ChatVertexAI(model_name="gemini-2.5-flash", temperature=0)
+
+def rewrite_query(query: str) -> str:
+    return rewriter.invoke({"query": query}).content
+
+
 
 
 def load_documents(corpus_path: str = CORPUS_PATH):
@@ -182,19 +209,23 @@ def generate(question: str, passages: list[dict]) -> str:
 
 
 @observe()
-def ask(question: str, vector_store) -> dict:
-    """Retrieve passages for question, then answer from them.
+def ask(question: str, vector_store, use_rewriting: bool = False) -> dict:
+    if use_rewriting:
+        retrieval_query = rewrite_query(question)
+    else:
+        retrieval_query = question
 
-    Returns the question, the answer, the sources behind it, and the passage
-    text the model saw. Day 3's evaluation harness reads all four.
-    """
-    passages = retrieve(question, vector_store)
+    passages = retrieve(retrieval_query, vector_store)
+    answer = generate(question, passages)  # note: original question goes to the model, not the rewritten one
+
     return {
         "question": question,
-        "answer": generate(question, passages),
+        "answer": answer,
         "sources": [p["source"] for p in passages],
         "contexts": [p["content"] for p in passages],
+        "retrieval_query": retrieval_query,
     }
+
 
 
 def cmd_split(separators=None, first=0, last=4):
@@ -216,8 +247,11 @@ def cmd_retrieve(question: str):
         print(passage["content"][:300])
 
 
-def cmd_ask(question: str):
-    result = ask(question, load_vector_store())
+def cmd_ask(question: str, use_rewriting: bool = False):
+    result = ask(question, load_vector_store(), use_rewriting=use_rewriting)
+    if use_rewriting:
+        print("\nRetrieval query:")
+        print(result["retrieval_query"])
     print("\n" + result["answer"])
     print("\nPassages consulted:")
     for source in result["sources"]:
@@ -233,7 +267,7 @@ def cmd_prompt(question: str):
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     question = sys.argv[2] if len(sys.argv) > 2 else ""
-    needs_question = ("retrieve", "ask", "prompt")
+    needs_question = ("retrieve", "ask", "ask-rewritten", "prompt")
 
     if command == "split":
         # An optional chunk number prints that chunk and the three after it.
@@ -245,11 +279,13 @@ if __name__ == "__main__":
     elif command == "index":
         cmd_index()
     elif command in needs_question and not question:
-        print(f'This one needs a question: python pipeline.py {command} "how do bats navigate"')
+        print(f'This one needs a question: python pipeline.py {command} "what are the AI RMF Core functions?"')
     elif command == "retrieve":
         cmd_retrieve(question)
     elif command == "ask":
         cmd_ask(question)
+    elif command == "ask-rewritten":
+        cmd_ask(question, use_rewriting=True)
     elif command == "prompt":
         cmd_prompt(question)
     else:
