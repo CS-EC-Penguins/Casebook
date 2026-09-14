@@ -111,5 +111,47 @@
     "source_docs": [
       "meridian-ai-governance-report.txt"
     ]
+  },
+  {
+    "question": "What applications are exempt from regulation according to the EU AI Act?",
+    "ground_truth": "AI systems developed and used exclusively for military purposes. Public authorities or international organisations in third countries using AI systems for law enforcement and judicial cooperation. AI research and development activity. AI components provided under free and open-source licences. People using AI systems for purely personal, non-professional activity.",
+    "source_docs": [
+      "eu_ai_act.txt", "Article 2"
+    ]
+  },
+  {
+    "question": "Which AI applications are considered high-risk according to the EU AI Act?",
+    "ground_truth": "",
+    "source_docs": [
+      "eu_ai_act.txt", "Article 6", ""
+    ]
+  },
+  {
+    "question": "Which AI applications are subject to transparency regulation according to the EU AI Act?",
+    "ground_truth": "Generating or manipulating image, audio or video content constituting a deep-fake. Generating or manipulating text which is published to inform the public on matters of public interest. Emotion recognition or biometric categorisation. Interacting directly with people. Generating synthetic audio, image, video or text content.",
+    "source_docs": [
+      "eu_ai_act.txt", "Article 50"
+    ]
+  },
+  {
+    "question": "Which AI applications are prohibited according to the EU AI Act?",
+    "ground_truth": "Subliminal techniques, manipulation, and deception. Exploiting vulnerable groups for detrimental outcomes. Biometric categorisation. Social scoring. Predictive policing. Creating or expanding facial recognition databases. Emotion detection/recognition in the workplace or educational institutions (except for medical or safety reasons). Real-time remote biometric classification systems.",
+    "source_docs": [
+      "eu_ai_act.txt", "Article 5"
+    ]
+  },
+  {
+    "question": "What is the definition of an \"authorised representative\" according to the EU AI Act?",
+    "ground_truth": "Any natural or legal person located or established in the Union who has received and accepted a written mandate from a provider of an AI system or a general purpose AI model to, respectively, perform and carry out on its behalf the obligations and procedures established by this Regulation.",
+    "source_docs": [
+      "eu_ai_act.txt", "Article 3, poihts 2-8", "Recital 87"
+    ]
+  },
+  {
+    "question": "What actions would make a distributor, importer or deployer be considered as a provider according to the EU AI Act?",
+    "ground_truth": "If they put their name or trademark on a high-risk AI system already placed on the market or make a substantial modification to an existing, already high-risk category AI application such that it remains high-risk. Or, alternatively, they modify the intended purpose of a pre-existing AI system that hasn't been classified as high-risk such that it becomes high-risk according to the definitions in Article 6.",
+    "source_docs": [
+      "eu_ai_act.txt", "Article 25"
+    ]
   }
 ]
