@@ -113,29 +113,29 @@
     ]
   },
   {
-    "question": "What applications are exempt from regulation according to the EU AI Act?",
-    "ground_truth": "AI systems developed and used exclusively for military purposes. Public authorities or international organisations in third countries using AI systems for law enforcement and judicial cooperation. AI research and development activity. AI components provided under free and open-source licences. People using AI systems for purely personal, non-professional activity.",
+    "question": "What AI use-cases are exempt from regulation according to the EU AI Act?",
+    "ground_truth": "The following use-cases are exempt from regulation: AI systems developed and used exclusively for military purposes. Public authorities or international organisations in third countries using AI systems for law enforcement and judicial cooperation. AI research and development activity. AI components provided under free and open-source licences. People using AI systems for purely personal, non-professional activity.",
     "source_docs": [
       "eu_ai_act.txt", "Article 2"
     ]
   },
   {
     "question": "Which AI applications are considered high-risk according to the EU AI Act?",
-    "ground_truth": "",
+    "ground_truth": "According to the Act the following applications are considered high-risk: Biometrics. Critical infrastructure. Educational and vocational training. Employment, worker management, and access to self-employment. Access to and enjoyment of essential private services and public services and benefits. Law enforcement. Migration, asylum, and border control management. Administration of justice and democratic processes. Civil aviation security. Two- or three-wheel vehicles and quadricycles. Agricultural and forestry vehicles. Marine equipment. Rail system interoperability. Motor vehicles and their trailers. Civil aviation. In addition, the following application categories would all be considered high-risk: Machinery. Toys. Recreational craft & personal watercraft. Lifts and safety components of lifts. Equipment and protective systems intended for use in potentially explosive atmospheres. Radio equipment. Pressure equipment. Cableway installations. Personal protective equipment. Appliances burning gaseous fuels. Medical devices. In-vitro diagnostic medical devices. This final sub-list also constitutes the list of devices/services/applications considered high-risk whn they use an AI system as a 'safety component'.",
     "source_docs": [
-      "eu_ai_act.txt", "Article 6", ""
+      "eu_ai_act.txt", "Article 6, point 1,2, 3", "Annex I"
     ]
   },
   {
     "question": "Which AI applications are subject to transparency regulation according to the EU AI Act?",
-    "ground_truth": "Generating or manipulating image, audio or video content constituting a deep-fake. Generating or manipulating text which is published to inform the public on matters of public interest. Emotion recognition or biometric categorisation. Interacting directly with people. Generating synthetic audio, image, video or text content.",
+    "ground_truth": "The following AI applications are subject to transparency regulation ubder the Act: Generating or manipulating image, audio or video content constituting a deep-fake. Generating or manipulating text which is published to inform the public on matters of public interest. Emotion recognition or biometric categorisation. Interacting directly with people. Generating synthetic audio, image, video or text content.",
     "source_docs": [
       "eu_ai_act.txt", "Article 50"
     ]
   },
   {
     "question": "Which AI applications are prohibited according to the EU AI Act?",
-    "ground_truth": "Subliminal techniques, manipulation, and deception. Exploiting vulnerable groups for detrimental outcomes. Biometric categorisation. Social scoring. Predictive policing. Creating or expanding facial recognition databases. Emotion detection/recognition in the workplace or educational institutions (except for medical or safety reasons). Real-time remote biometric classification systems.",
+    "ground_truth": "The following AI applications are prohibited according to the act: Subliminal techniques, manipulation, and deception. Exploiting vulnerable groups for detrimental outcomes. Biometric categorisation. Social scoring. Predictive policing. Creating or expanding facial recognition databases. Emotion detection/recognition in the workplace or educational institutions (except for medical or safety reasons). Real-time remote biometric classification systems.",
     "source_docs": [
       "eu_ai_act.txt", "Article 5"
     ]
