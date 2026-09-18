@@ -30,7 +30,7 @@ What I chose for Casebook, and why:
 
 What it does: Saves all the chunks in a database with their computed vectors and source metadata so that embeddings don't need to be re-calculated on every query.
 
-What breaks without it: Without this, the ability to order by proximity in semantic meaning is taken away and the savings on LLM tokens are taken away because everything in the whole db would need to be re-analiysed and ordered for every new query/question on the document store.
+What breaks without it: Without this, the ability to order by proximity in semantic meaning is taken away and the savings on LLM tokens are taken away because everything in the whole db would need to be re-analiysed and ordered in the client python code for every new query/question on the document store.
 
 What I chose for Casebook, and why: I would like to have extended metadata, expecially for the EU AI act that can be more specific about which part of the document is being referred to, as it's already chunked quite semantically.
 
@@ -38,17 +38,17 @@ What I chose for Casebook, and why: I would like to have extended metadata, expe
 
 Covers how many passages you retrieve, and the source that travels with each one.
 
-What it does:
+What it does: It selects only the top k most similar passages to use as a basis for the answer.
 
-What breaks without it:
+What breaks without it: If too narrow, the right answer could be missed and never surfaced to the LLM for inspection.
 
-What I chose for Casebook, and why:
+What I chose for Casebook, and why: 4.
 
 ## 5. Constraining the prompt
 
-What it does:
+What it does: It tells the LLM to only use the source material provided, not any prior knowledge, and to cite its sources.
 
-What breaks without it:
+What breaks without it: The LLM could hallucinate and answer confidently with a wrong answer.
 
 What I chose for Casebook, and why:
 
@@ -56,3 +56,5 @@ What I chose for Casebook, and why:
 
 If Casebook gave you an answer tomorrow that was wrong, or missing a citation,
 which of the five would you look at first, and what would you print to check it?
+
+I would look at 4 and try changing that value to include more passages.
