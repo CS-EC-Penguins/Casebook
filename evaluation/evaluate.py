@@ -33,7 +33,7 @@ def collect_outputs(vector_store) -> list[dict]:
         question = item["question"]
         print(f"[{index}/{total}] {question}")
 
-        result = ask(question, vector_store)
+        result = ask(question, vector_store, use_rewriting=True)
 
         outputs.append(
             {
