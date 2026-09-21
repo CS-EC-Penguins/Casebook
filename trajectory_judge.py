@@ -11,8 +11,7 @@ from graph_agent import ask_agent
 TRAJECTORY_JUDGE_PROMPT = """You are evaluating whether an AI agent made appropriate tool choices.
 
 Available tools:
-- retrieve: searches an internal document corpus covering bat echolocation,
-  bee communication, deep-sea hydrothermal vents, and coral reef ecology
+- retrieve: searches an internal document corpus covering AI governance guidelines and legislation from the UK, US and EU.
 - web_search: searches the web for current or general information
 
 Query: {query}
