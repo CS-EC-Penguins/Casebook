@@ -1,3 +1,4 @@
+import os
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
