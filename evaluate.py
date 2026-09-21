@@ -12,6 +12,7 @@ import argparse
 import json
 from pathlib import Path
 from datasets import Dataset
+from ragas.run_config import RunConfig
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
 
@@ -66,13 +67,24 @@ def run_ragas(outputs: list[dict]) -> None:
         "ground_truth": [item["ground_truth"] for item in outputs],
     }
     dataset = Dataset.from_dict(data)
+    
+    run_config = RunConfig(
+        timeout=300,
+        max_retries=6,
+        max_wait=30,
+        max_workers=4,
+        log_tenacity=True,
+    )
+
     result = evaluate(
         dataset=dataset,
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
+        run_config=run_config,
     )
-    print(result)
+
+    #print(result)
     result.to_pandas().to_csv("evaluation/ragas_results.csv", index=False)
     print("Per-query results saved to evaluation/ragas_results.csv")
     return result
