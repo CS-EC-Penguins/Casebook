@@ -9,6 +9,7 @@
 # context_recall:
 # Date:
 
+import argparse
 import json
 from pathlib import Path
 from datasets import Dataset
@@ -22,8 +23,8 @@ DATASET_PATH = Path("evaluation/golden_dataset.json")
 OUTPUT_PATH  = Path("evaluation/pipeline_outputs.json")
 
 
-def collect_outputs(vector_store) -> list[dict]:
-    with DATASET_PATH.open("r", encoding="utf-8") as file:
+def collect_outputs(vector_store, dataset_path: Path = DATASET_PATH) -> list[dict]:
+    with dataset_path.open("r", encoding="utf-8") as file:
         golden_dataset = json.load(file)
 
     outputs = []
@@ -52,12 +53,12 @@ def collect_outputs(vector_store) -> list[dict]:
     return outputs
 
 
-def run_ragas(outputs: list[dict]) -> None:
+def run_ragas(outputs: list[dict]):
     """Score the collected outputs with RAGAS (given, no changes needed).
 
     Builds a HuggingFace Dataset from outputs and calls ragas.evaluate() with
     four metrics, using the Vertex AI judge and embeddings from ragas_config.
-    Prints the aggregate scores and saves per-query results to CSV.
+    Saves per-query results to CSV and returns the RAGAS result.
     """
     data = {
         "question":     [item["question"] for item in outputs],
@@ -72,12 +73,36 @@ def run_ragas(outputs: list[dict]) -> None:
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
     )
-    print(result)
-    result.to_pandas().to_csv("evaluation/ragas_results.csv", index=False)
+    df = result.to_pandas()
+    df.to_csv("evaluation/ragas_results.csv", index=False)
     print("Per-query results saved to evaluation/ragas_results.csv")
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ci", action="store_true", help="Write results to evaluation_results.json")
+    parser.add_argument("--dataset", type=Path, default=DATASET_PATH, help="Path to the question set to evaluate")
+    args = parser.parse_args()
+
+    vector_store = load_vector_store()
+    outputs = collect_outputs(vector_store, args.dataset)
+    df = run_ragas(outputs).to_pandas()
+    results = {
+        "faithfulness": float(df["faithfulness"].mean()),
+        "answer_relevancy": float(df["answer_relevancy"].mean()),
+        "context_precision": float(df["context_precision"].mean()),
+        "context_recall": float(df["context_recall"].mean()),
+    }
+
+    if args.ci:
+        with open("evaluation_results.json", "w", encoding="utf-8") as file:
+            json.dump(results, file, indent=2)
+        print("Results written to evaluation_results.json")
+    else:
+        for metric, score in results.items():
+            print(f"{metric}: {score:.3f}")
 
 
 if __name__ == "__main__":
-    vector_store = load_vector_store()
-    outputs = collect_outputs(vector_store)
-    run_ragas(outputs)
+    main()
