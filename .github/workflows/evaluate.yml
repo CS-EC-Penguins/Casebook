@@ -45,14 +45,14 @@ jobs:
         run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
 
       - name: Check quality thresholds
-        run: python check_thresholds.py --results quality_gate_results.json
+        run: python check_thresholds.py --results evaluation_results.json
 
       - name: Upload evaluation results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: quality_gate_results
-          path: quality_gate_results.json
+          path: evaluation_results.json
 
   full-evaluation:
     if: github.event_name == 'push'
