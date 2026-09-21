@@ -8,7 +8,7 @@
 # context_precision:
 # context_recall:
 # Date:
-
+import argparse
 import json
 from pathlib import Path
 from datasets import Dataset
@@ -75,9 +75,40 @@ def run_ragas(outputs: list[dict]) -> None:
     print(result)
     result.to_pandas().to_csv("evaluation/ragas_results.csv", index=False)
     print("Per-query results saved to evaluation/ragas_results.csv")
+    return result
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ci", action="store_true", help="Write results to evaluation_results.json")
+    parser.add_argument("--dataset", default="evaluation/golden_dataset.json", help="Path to the question set to evaluate")
+    args = parser.parse_args()
+
+    # ...your existing evaluation code, loading questions from args.dataset
+    # instead of a hardcoded path...
+
     vector_store = load_vector_store()
     outputs = collect_outputs(vector_store)
-    run_ragas(outputs)
+    result = run_ragas(outputs)
+    
+    # In Week 9 your harness produced a RAGAS result object; you convert it with
+    # result.to_pandas() to write the CSV. Take the per-metric means from that DataFrame:
+    df = result.to_pandas()
+    results = {
+        "faithfulness": float(df["faithfulness"].mean()),
+        "answer_relevancy": float(df["answer_relevancy"].mean()),
+        "context_precision": float(df["context_precision"].mean()),
+        "context_recall": float(df["context_recall"].mean()),
+    }
+
+    if args.ci:
+        with open("evaluation_results.json", "w") as f:
+            json.dump(results, f, indent=2)
+        print("Results written to evaluation_results.json")
+    else:
+        for metric, score in results.items():
+            print(f"{metric}: {score:.3f}")
+
+
+    
