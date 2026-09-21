@@ -2,7 +2,7 @@ name: Evaluate Casebook
 
 on:
   push:
-    branches: [main]
+    branches: [main, charlie_branch]
   pull_request:
     branches: [main]
 
