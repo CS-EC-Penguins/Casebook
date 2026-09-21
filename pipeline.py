@@ -203,7 +203,7 @@ def generate(question: str, passages: list[dict]) -> str:
     temperature=0 removes sampling randomness, so when an answer changes you
     know the retrieval changed rather than the model rolling a different dice.
     """
-    llm = ChatVertexAI(model_name=CHAT_MODEL, temperature=0)
+    llm = ChatVertexAI(model_name=CHAT_MODEL, temperature=0, project=os.environ["GOOGLE_CLOUD_PROJECT"])
     response = llm.invoke(build_prompt(question, passages))
     return response.content
 
