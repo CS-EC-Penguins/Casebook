@@ -7,7 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  evaluate:
+  quality-gate:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     environment: dev
 
@@ -17,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -27,6 +28,13 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
 
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --port 5432 pa-consulting-ai-eng:europe-west4:casebook-pg &
+          sleep 5
+
       - name: Run evaluation
         env:
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
@@ -34,7 +42,56 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-        run: python evaluate.py --ci
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
+
+      - name: Check quality thresholds
+        run: python check_thresholds.py --results quality_gate_results.json
+
+      - name: Upload evaluation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality_gate_results
+          path: quality_gate_results.json
+
+  full-evaluation:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # ...same steps as quality-gate, but "Run Full Evaluation" points
+    # --dataset at evaluation/golden_dataset.json instead of the Smoke Set.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --port 5432 pa-consulting-ai-eng:europe-west4:casebook-pg &
+          sleep 5
+
+      - name: Run evaluation
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: python evaluate.py --ci --ci --dataset evaluation/golden_dataset.json
 
       - name: Check quality thresholds
         run: python check_thresholds.py --results evaluation_results.json
@@ -43,5 +100,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: evaluation-results
+          name: quality-gate-results
           path: evaluation_results.json
