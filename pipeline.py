@@ -75,7 +75,7 @@ rewrite_prompt = ChatPromptTemplate.from_messages([
     ("human", "{query}")
 ])
 
-rewriter = rewrite_prompt | ChatVertexAI(model_name="gemini-2.5-flash", temperature=0)
+rewriter = rewrite_prompt | ChatVertexAI(model_name="gemini-2.5-flash", temperature=0, project=os.environ["GOOGLE_CLOUD_PROJECT"])
 
 def rewrite_query(query: str) -> str:
     return rewriter.invoke({"query": query}).content
@@ -133,7 +133,7 @@ def build_vector_store(chunks):
     The rows live in langchain_pg_embedding and the collection itself is a row
     in langchain_pg_collection. There is no table called "sample_docs".
     """
-    embeddings = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
+    embeddings = VertexAIEmbeddings(model_name=EMBEDDING_MODEL, project=os.environ["GOOGLE_CLOUD_PROJECT"])
     vector_store = PGVector.from_documents(
         documents=chunks,
         embedding=embeddings,
@@ -151,7 +151,7 @@ def load_vector_store():
     This embeds nothing, so it is cheap. Use it for every query after the single
     run of build_vector_store.
     """
-    embeddings = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
+    embeddings = VertexAIEmbeddings(model_name=EMBEDDING_MODEL, project=os.environ["GOOGLE_CLOUD_PROJECT"])
     return PGVector(
         embeddings=embeddings,
         connection=os.environ["PG_CONNECTION_STRING"],
@@ -203,7 +203,7 @@ def generate(question: str, passages: list[dict]) -> str:
     temperature=0 removes sampling randomness, so when an answer changes you
     know the retrieval changed rather than the model rolling a different dice.
     """
-    llm = ChatVertexAI(model_name=CHAT_MODEL, temperature=0)
+    llm = ChatVertexAI(model_name=CHAT_MODEL, temperature=0, project=os.environ["GOOGLE_CLOUD_PROJECT"])
     response = llm.invoke(build_prompt(question, passages))
     return response.content
 

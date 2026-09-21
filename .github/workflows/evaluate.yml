@@ -23,17 +23,49 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest
+          coverage report -m --fail-under=20
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
 
       - name: Start Cloud SQL Auth Proxy
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
         run: |
-          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          set -euxo pipefail
+
+          curl -fsSLo cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
           chmod +x cloud-sql-proxy
-          ./cloud-sql-proxy --port 5432 pa-consulting-ai-eng:europe-west4:casebook-pg &
-          sleep 5
+
+          ./cloud-sql-proxy \
+            --address 127.0.0.1 \
+            --port 5432 \
+            "${GOOGLE_CLOUD_PROJECT}:europe-west2:casebook-pg" &
+          
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432; then
+              echo "Cloud SQL proxy is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Cloud SQL proxy did not become ready"
+          exit 1
 
       - name: Run evaluation
         env:
@@ -42,22 +74,24 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
 
       - name: Check quality thresholds
-        run: python check_thresholds.py --results quality_gate_results.json
+        run: python check_thresholds.py --results evaluation_results.json
 
       - name: Upload evaluation results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: quality_gate_results
-          path: quality_gate_results.json
+          path: evaluation_results.json
 
   full-evaluation:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: dev
     # ...same steps as quality-gate, but "Run Full Evaluation" points
     # --dataset at evaluation/golden_dataset.json instead of the Smoke Set.
     steps:
@@ -77,11 +111,29 @@ jobs:
           credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
 
       - name: Start Cloud SQL Auth Proxy
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
         run: |
-          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          set -euxo pipefail
+          curl -fsSLo cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
           chmod +x cloud-sql-proxy
-          ./cloud-sql-proxy --port 5432 pa-consulting-ai-eng:europe-west4:casebook-pg &
-          sleep 5
+
+          ./cloud-sql-proxy \
+            --address 127.0.0.1 \
+            --port 5432 \
+            "${GOOGLE_CLOUD_PROJECT}:europe-west2:casebook-pg" &
+
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432; then
+              echo "Cloud SQL proxy is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Cloud SQL proxy did not become ready"
+          exit 1
 
       - name: Run evaluation
         env:
@@ -90,6 +142,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate.py --ci --ci --dataset evaluation/golden_dataset.json
 
