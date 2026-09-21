@@ -41,7 +41,7 @@ jobs:
           ./cloud-sql-proxy \
             --address 127.0.0.1 \
             --port 5432 \
-            "${GOOGLE_CLOUD_PROJECT}:europe-west4:casebook-pg" &
+            "${GOOGLE_CLOUD_PROJECT}:europe-west2:casebook-pg" &
           
           for i in {1..30}; do
             if pg_isready -h 127.0.0.1 -p 5432; then
@@ -108,7 +108,7 @@ jobs:
           ./cloud-sql-proxy \
             --address 127.0.0.1 \
             --port 5432 \
-            "${GOOGLE_CLOUD_PROJECT}:europe-west4:casebook-pg" &
+            "${GOOGLE_CLOUD_PROJECT}:europe-west2:casebook-pg" &
 
           for i in {1..30}; do
             if pg_isready -h 127.0.0.1 -p 5432; then
