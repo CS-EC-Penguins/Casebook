@@ -23,19 +23,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests with coverage
-        run: |
-          coverage run -m pytest
-          coverage report -m --fail-under=20
-          coverage xml
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage.xml
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -66,6 +53,19 @@ jobs:
 
           echo "Cloud SQL proxy did not become ready"
           exit 1
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest
+          coverage report -m --fail-under=20
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
 
       - name: Run evaluation
         env:
@@ -134,6 +134,19 @@ jobs:
 
           echo "Cloud SQL proxy did not become ready"
           exit 1
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest
+          coverage report -m --fail-under=20
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
 
       - name: Run evaluation
         env:
