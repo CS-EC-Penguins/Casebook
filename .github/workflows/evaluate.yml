@@ -55,6 +55,14 @@ jobs:
           exit 1
 
       - name: Run tests with coverage
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           coverage run -m pytest
           coverage report -m --fail-under=20
@@ -136,6 +144,15 @@ jobs:
           exit 1
 
       - name: Run tests with coverage
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+  
         run: |
           coverage run -m pytest
           coverage report -m --fail-under=20
