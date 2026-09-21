@@ -97,11 +97,29 @@ jobs:
           credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
 
       - name: Start Cloud SQL Auth Proxy
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
         run: |
-          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          set -euxo pipefail
+          curl -fsSLo cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
           chmod +x cloud-sql-proxy
-          ./cloud-sql-proxy --port 5432 pa-consulting-ai-eng:europe-west4:casebook-pg &
-          sleep 5
+
+          ./cloud-sql-proxy \
+            --address 127.0.0.1 \
+            --port 5432 \
+            "${GOOGLE_CLOUD_PROJECT}:europe-west4:casebook-pg" &
+
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432; then
+              echo "Cloud SQL proxy is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Cloud SQL proxy did not become ready"
+          exit 1
 
       - name: Run evaluation
         env:
