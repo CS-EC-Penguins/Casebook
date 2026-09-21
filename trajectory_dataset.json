@@ -1,0 +1,52 @@
+[
+  {
+    "question": "How do bats use echolocation to detect obstacles at night?",
+    "expected_tools": ["retrieve"],
+    "note": "Clear corpus question — bat-echolocation.txt"
+  },
+  {
+    "question": "How do honeybees communicate the direction to a food source?",
+    "expected_tools": ["retrieve"],
+    "note": "Clear corpus question — bee-communication.txt (waggle dance)"
+  },
+  {
+    "question": "What organisms live near deep-sea hydrothermal vents and how do they survive?",
+    "expected_tools": ["retrieve"],
+    "note": "Clear corpus question — deep-sea-vents.txt"
+  },
+  {
+    "question": "What is coral bleaching?",
+    "expected_tools": ["retrieve"],
+    "note": "Clear corpus question — coral-reefs.txt"
+  },
+  {
+    "question": "Compare the navigation mechanisms used by bats and by honeybees.",
+    "expected_tools": ["retrieve"],
+    "note": "Multi-hop corpus question — requires bat-echolocation.txt and bee-communication.txt"
+  },
+  {
+    "question": "What were the main news stories in science this week?",
+    "expected_tools": ["web_search"],
+    "note": "Clear current-events question — cannot be in static corpus"
+  },
+  {
+    "question": "Who won the most recent Nobel Prize in Physics?",
+    "expected_tools": ["web_search"],
+    "note": "Current-events question"
+  },
+  {
+    "question": "What are the main threats to coral reefs?",
+    "expected_tools": ["retrieve"],
+    "note": "Corpus question — coral-reefs.txt"
+  },
+  {
+    "question": "What frequency range do bats use for echolocation, and how does that compare to human hearing?",
+    "expected_tools": ["retrieve"],
+    "note": "Corpus question — bat-echolocation.txt"
+  },
+  {
+    "question": "What is the current price of crude oil?",
+    "expected_tools": ["web_search"],
+    "note": "Market data — definitely not in corpus"
+  }
+]
