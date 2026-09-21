@@ -41,7 +41,7 @@ def test_multi_part_corpus_question_retrieves_multiple_times():
     # in the answer) rather than the call count, because the agent may satisfy
     # both topics in a single retrieval if top-k results happen to span both
     # documents -- asserting len(retrieve_calls) >= 2 would be brittle.
-    result = ask_agent("Compare the findings across the International AI Safety Report and the Meridian governance report.")
+    result = ask_agent("Compare the findings across the UK AISI Report and the Meridian governance report.")
     assert "retrieve" in [tc["tool"] for tc in result["tool_calls"]]
     answer_lower = result["answer"].lower()
     assert "automation bias" in answer_lower, "Answer should mention automation bias"
