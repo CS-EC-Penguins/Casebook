@@ -9,6 +9,7 @@ on:
 jobs:
   evaluate:
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +21,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
 
       - name: Run evaluation
         env:
