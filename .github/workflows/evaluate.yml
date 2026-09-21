@@ -10,6 +10,7 @@ jobs:
   quality-gate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +73,7 @@ jobs:
   full-evaluation:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: dev
     # ...same steps as quality-gate, but "Run Full Evaluation" points
     # --dataset at evaluation/golden_dataset.json instead of the Smoke Set.
     steps:
