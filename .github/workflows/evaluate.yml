@@ -63,7 +63,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           coverage run -m pytest
@@ -84,7 +84,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
 
@@ -152,7 +152,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
   
         run: |
@@ -174,7 +174,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate.py --ci --ci --dataset evaluation/golden_dataset.json
 

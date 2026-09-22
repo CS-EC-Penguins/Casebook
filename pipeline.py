@@ -23,7 +23,7 @@ corpus, and you choose them properly for Casebook this afternoon.
 
 import os
 import sys
-
+import google.api_core.exceptions
 from langfuse import observe
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.prompts import ChatPromptTemplate

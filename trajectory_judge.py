@@ -7,6 +7,7 @@ Usage:
 import json
 from langchain_google_vertexai import ChatVertexAI
 from graph_agent import ask_agent
+import google.api_core.exceptions
 from tenacity import (
     retry,
     stop_after_attempt,

@@ -11,6 +11,7 @@ Usage:
 import asyncio
 import sys
 import os
+import google.api_core.exceptions
 from pathlib import Path
 from typing import Annotated, TypedDict
 from tenacity import (
