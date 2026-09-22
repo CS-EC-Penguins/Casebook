@@ -7,6 +7,7 @@ Usage:
     pytest test_trajectories.py -v
 """
 from graph_agent import ask_agent
+from typing import Annotated, Literal, TypedDict
 
 
 def test_corpus_question_calls_retrieve():
