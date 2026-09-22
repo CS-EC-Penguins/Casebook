@@ -10,6 +10,7 @@ Usage:
 
 import asyncio
 import sys
+import os
 from pathlib import Path
 from typing import Annotated, TypedDict
 
@@ -171,6 +172,7 @@ async def run_agent_async(
             base_model = model or ChatVertexAI(
                 model_name=MODEL_NAME,
                 temperature=0,
+                project=os.environ["GOOGLE_CLOUD_PROJECT"]
             )
             bound_model = base_model.bind_tools(tools)
             graph = build_graph(

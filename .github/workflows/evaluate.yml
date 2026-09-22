@@ -2,7 +2,7 @@ name: Evaluate Casebook
 
 on:
   push:
-    branches: [main]
+    branches: [main, charlie_branch]
   pull_request:
     branches: [main]
 
@@ -22,19 +22,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Run tests with coverage
-        run: |
-          coverage run -m pytest
-          coverage report -m --fail-under=20
-          coverage xml
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage.xml
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -67,6 +54,27 @@ jobs:
           echo "Cloud SQL proxy did not become ready"
           exit 1
 
+      - name: Run tests with coverage
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: |
+          coverage run -m pytest
+          coverage report -m --fail-under=20
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+
       - name: Run evaluation
         env:
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
@@ -74,7 +82,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
 
@@ -135,6 +143,28 @@ jobs:
           echo "Cloud SQL proxy did not become ready"
           exit 1
 
+      - name: Run tests with coverage
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+  
+        run: |
+          coverage run -m pytest
+          coverage report -m --fail-under=20
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+
       - name: Run evaluation
         env:
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
@@ -142,7 +172,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate.py --ci --ci --dataset evaluation/golden_dataset.json
 

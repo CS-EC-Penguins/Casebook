@@ -16,7 +16,7 @@ def test_corpus_question_calls_retrieve():
     # going to the web. This should always hold because the system prompt
     # instructs the model to prefer the internal tool for corpus topics, and
     # "coral bleaching" is unambiguously in the knowledge base.
-    result = ask_agent("What is coral bleaching?")
+    result = ask_agent("What are the obligations for providers of high-risk AI systems under the EU AI Act?")
     assert "retrieve" in [tc["tool"] for tc in result["tool_calls"]]
 
 
@@ -41,8 +41,8 @@ def test_multi_part_corpus_question_retrieves_multiple_times():
     # in the answer) rather than the call count, because the agent may satisfy
     # both topics in a single retrieval if top-k results happen to span both
     # documents -- asserting len(retrieve_calls) >= 2 would be brittle.
-    result = ask_agent("Compare the navigation mechanisms used by bats and by honeybees.")
+    result = ask_agent("Compare the findings across the UK AISI Report and the Meridian governance report.")
     assert "retrieve" in [tc["tool"] for tc in result["tool_calls"]]
     answer_lower = result["answer"].lower()
-    assert "bat" in answer_lower, "Answer should mention bats"
-    assert "bee" in answer_lower, "Answer should mention bees / honeybees"
+    assert "governance" in answer_lower, "Answer should mention governance"
+    assert "human oversight" in answer_lower, "Answer should mention human oversight"

@@ -1,0 +1,30 @@
+[
+  {
+    "question": "What are the four functions in the AI RMF Core?",
+    "ground_truth": "GOVERN, MAP, MEASURE, and MANAGE",
+    "source_docs": [
+      "nist-ai-rmf.txt"
+    ]
+  },
+  {
+    "question": "What are the three categories of general-purpose AI risk?",
+    "ground_truth": "malicious use, malfunctions, and systemic risks",
+    "source_docs": [
+      "uk-aisi-report.txt"
+    ]
+  },
+  {
+    "question": "What conditions must hold for human oversight to be meaningful in AI-Assisted professional work?",
+    "ground_truth": "The reviewer must have sufficient expertise to identify errors. The reviewer must have sufficient time. The reviewer must understand the system's failure modes. Firms should treat human oversight as a design parameter, not an afterthought. The systems being built should make oversight practical: returning confidence indicators, flagging low-similarity retrievals, and surfacing uncertainty explicitly rather than projecting false confidence.",
+    "source_docs": [
+      "meridian-ai-governance-report.txt"
+    ]
+  },
+  {
+    "question": "Which AI applications are prohibited according to the EU AI Act?",
+    "ground_truth": "The following AI applications are prohibited according to the act: Subliminal techniques, manipulation, and deception. Exploiting vulnerable groups for detrimental outcomes. Biometric categorisation. Social scoring. Predictive policing. Creating or expanding facial recognition databases. Emotion detection/recognition in the workplace or educational institutions (except for medical or safety reasons). Real-time remote biometric classification systems.",
+    "source_docs": [
+      "eu_ai_act.txt"
+    ]
+  }
+]
