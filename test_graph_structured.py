@@ -1,6 +1,7 @@
 """Offline tests for the graph agent's structured final answer."""
 
 import unittest
+from typing import Annotated, Literal, TypedDict
 
 from graph_agent import (
     ITERATION_LIMIT_ANSWER,
