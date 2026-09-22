@@ -9,10 +9,12 @@ Usage:
 """
 
 import asyncio
+import json
+import re
 import sys
 import os
 from pathlib import Path
-from typing import Annotated, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
@@ -24,12 +26,17 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from pydantic import BaseModel, Field
 
 from pipeline import load_vector_store, retrieve as pipeline_retrieve
 
 
 MODEL_NAME = "gemini-2.5-flash"
 DEFAULT_MAX_ITERATIONS = 5
+SOURCE_PATTERN = re.compile(r"\[Source:\s*([^\]\n]+)\]")
+EVIDENCE_SOURCE_PATTERN = re.compile(r"(?m)^\[Source:\s*([^\]\n]+)\]\s*$")
+CITATION_ID_PATTERN = re.compile(r"\[(\d+)\]")
+ITERATION_LIMIT_ANSWER = "Could not produce a final answer within the iteration limit."
 
 SYSTEM_PROMPT = """You are a research assistant for the Casebook AI governance knowledge base.
 Use the retrieve tool for questions about the EU AI Act, NIST AI RMF, the
@@ -45,6 +52,20 @@ present general model knowledge as sourced evidence."""
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
     model_calls: int
+
+
+class Citation(BaseModel):
+    id: int = Field(ge=1)
+    source: str
+    type: Literal["document", "web"]
+
+
+class StructuredAnswer(BaseModel):
+    """The model-generated part of a Casebook response."""
+
+    status: Literal["answered", "insufficient_evidence"]
+    answer: str
+    citations: list[Citation] = Field(default_factory=list)
 
 
 def create_retrieve_tool(vector_store):
@@ -135,7 +156,7 @@ def summarise_run(question: str, messages: list, model_calls: int) -> dict:
 
     last_message = messages[-1]
     if getattr(last_message, "tool_calls", None):
-        answer = "Could not produce a final answer within the iteration limit."
+        answer = ITERATION_LIMIT_ANSWER
     else:
         answer = last_message.content
         if not isinstance(answer, str):
@@ -146,9 +167,75 @@ def summarise_run(question: str, messages: list, model_calls: int) -> dict:
         "answer": answer,
         "tool_calls": tool_calls,
         "contexts": extract_contexts_from_messages(messages),
-        "messages": messages,
         "iterations": model_calls,
     }
+
+
+async def structure_final_answer(run: dict, model) -> dict:
+    """Return the public response with numbered, verified citations."""
+    def response(status: str, answer: str, citations: list[dict]) -> dict:
+        return {
+            "question": run["question"],
+            "status": status,
+            "answer": answer,
+            "citations": citations,
+            "tool_calls": run["tool_calls"],
+            "contexts": run["contexts"],
+            "iterations": run["iterations"],
+        }
+
+    if run["answer"] == ITERATION_LIMIT_ANSWER:
+        return response("iteration_limit", ITERATION_LIMIT_ANSWER, [])
+
+    sources = {}
+    for context in run["contexts"]:
+        for source in EVIDENCE_SOURCE_PATTERN.findall(context):
+            sources[source] = (
+                "web" if source.startswith(("https://", "http://")) else "document"
+            )
+    if not sources:
+        return response("insufficient_evidence", "I cannot find this in the available sources.", [])
+
+    evidence = "\n\n".join(run["contexts"])
+    structured_model = model.with_structured_output(StructuredAnswer)
+    final = await structured_model.ainvoke([
+        SystemMessage(content=(
+            "Answer using only the tool evidence. Preserve the draft's supported "
+            "claims and do not add facts. Cite every factual claim in the answer "
+            "with numbered references such as [1]. In citations, assign IDs "
+            "starting at 1 in the order first cited, with the exact source "
+            "filename or URL and its type (document or web). Cite only tool "
+            "sources. If the evidence cannot answer the question, use "
+            "status='insufficient_evidence'."
+        )),
+        HumanMessage(content=(
+            f"Question: {run['question']}\n\n"
+            f"Draft answer: {run['answer']}\n\n"
+            f"Tool evidence:\n{evidence}"
+        )),
+    ])
+    if not isinstance(final, StructuredAnswer):
+        final = StructuredAnswer.model_validate(final)
+
+    ids = [citation.id for citation in final.citations]
+    if ids != list(range(1, len(ids) + 1)):
+        raise ValueError("Citation IDs must start at 1 and be sequential")
+    for citation in final.citations:
+        if sources.get(citation.source) != citation.type:
+            raise ValueError(f"Citation was not returned by a tool: {citation.source}")
+    if SOURCE_PATTERN.search(final.answer):
+        raise ValueError("Answer must use numbered citations")
+    answer_ids = {int(value) for value in CITATION_ID_PATTERN.findall(final.answer)}
+    if answer_ids != set(ids):
+        raise ValueError("Answer citations do not match the citations list")
+    if final.status == "answered" and not ids:
+        raise ValueError("An answered response needs at least one citation")
+
+    return response(
+        final.status,
+        final.answer,
+        [citation.model_dump() for citation in final.citations],
+    )
 
 
 async def run_agent_async(
@@ -189,11 +276,12 @@ async def run_agent_async(
                 config={"recursion_limit": max_iterations * 2 + 1},
             )
 
-    return summarise_run(
+    run = summarise_run(
         question,
         final_state["messages"],
         final_state["model_calls"],
     )
+    return await structure_final_answer(run, base_model)
 
 
 @observe()
@@ -221,9 +309,4 @@ if __name__ == "__main__":
         query = "What are the NIST AI RMF Core functions?"
 
     result = ask_agent(query)
-    print(result["answer"])
-    print("\nTool calls:")
-    for call in result["tool_calls"]:
-        print(f"  {call['tool']}: {call['args']}")
-
-    print("\nGraph iterations:", result["iterations"])
+    print(json.dumps(result, indent=2, ensure_ascii=False))
