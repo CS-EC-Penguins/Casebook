@@ -3,7 +3,6 @@
 import unittest
 
 from graph_agent import (
-    Citation,
     ITERATION_LIMIT_ANSWER,
     StructuredAnswer,
     structure_final_answer,
@@ -38,7 +37,6 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="The four functions are GOVERN, MAP, MEASURE, and MANAGE. [1]",
-            citations=[Citation(id=1, source="nist-ai-rmf.txt", type="document")],
         ))
 
         result = await structure_final_answer(self.run, model)
@@ -55,33 +53,56 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["tool_calls"], self.run["tool_calls"])
         self.assertEqual(result["contexts"], self.run["contexts"])
         self.assertIn("The Core has four functions", model.messages[-1].content)
+        self.assertIn("[1] nist-ai-rmf.txt (document)", model.messages[-1].content)
 
-    async def test_rejects_citation_not_in_tool_evidence(self):
-        model = FakeModel(StructuredAnswer(
-            status="answered",
-            answer="An answer. [1]",
-            citations=[Citation(id=1, source="invented.txt", type="document")],
-        ))
-
-        with self.assertRaisesRegex(ValueError, "not returned by a tool"):
-            await structure_final_answer(self.run, model)
-
-    async def test_rejects_wrong_citation_number(self):
+    async def test_unknown_citation_number_returns_insufficient_evidence(self):
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="An answer. [2]",
-            citations=[Citation(id=1, source="nist-ai-rmf.txt", type="document")],
         ))
 
-        with self.assertRaisesRegex(ValueError, "do not match"):
-            await structure_final_answer(self.run, model)
+        result = await structure_final_answer(self.run, model)
+
+        self.assertEqual(result["status"], "insufficient_evidence")
+        self.assertEqual(result["citations"], [])
+
+    async def test_missing_citation_returns_insufficient_evidence(self):
+        model = FakeModel(StructuredAnswer(
+            status="answered",
+            answer="An answer without a citation.",
+        ))
+
+        result = await structure_final_answer(self.run, model)
+
+        self.assertEqual(result["status"], "insufficient_evidence")
+        self.assertEqual(result["citations"], [])
+
+    async def test_citations_are_renumbered_in_order_of_first_use(self):
+        self.run["contexts"] = [
+            "[Source: first.txt]\nFirst finding.\n\n"
+            "[Source: second.txt]\nSecond finding."
+        ]
+        model = FakeModel(StructuredAnswer(
+            status="answered",
+            answer="Second finding [2]. First finding [1]. Second finding again [2].",
+        ))
+
+        result = await structure_final_answer(self.run, model)
+
+        self.assertEqual(
+            result["answer"],
+            "Second finding [1]. First finding [2]. Second finding again [1].",
+        )
+        self.assertEqual(result["citations"], [
+            {"id": 1, "source": "second.txt", "type": "document"},
+            {"id": 2, "source": "first.txt", "type": "document"},
+        ])
 
     async def test_web_source_has_web_type(self):
         self.run["contexts"] = ["[Source: https://example.org/news]\nCurrent news."]
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="Current news. [1]",
-            citations=[Citation(id=1, source="https://example.org/news", type="web")],
         ))
 
         result = await structure_final_answer(self.run, model)

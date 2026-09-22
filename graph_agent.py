@@ -65,7 +65,6 @@ class StructuredAnswer(BaseModel):
 
     status: Literal["answered", "insufficient_evidence"]
     answer: str
-    citations: list[Citation] = Field(default_factory=list)
 
 
 def create_retrieve_tool(vector_store):
@@ -197,44 +196,64 @@ async def structure_final_answer(run: dict, model) -> dict:
         return response("insufficient_evidence", "I cannot find this in the available sources.", [])
 
     evidence = "\n\n".join(run["contexts"])
+    numbered_sources = list(sources.items())
+    source_by_id = dict(enumerate(numbered_sources, start=1))
+    source_list = "\n".join(
+        f"[{source_id}] {source} ({source_type})"
+        for source_id, (source, source_type) in source_by_id.items()
+    )
     structured_model = model.with_structured_output(StructuredAnswer)
     final = await structured_model.ainvoke([
         SystemMessage(content=(
             "Answer using only the tool evidence. Preserve the draft's supported "
             "claims and do not add facts. Cite every factual claim in the answer "
-            "with numbered references such as [1]. In citations, assign IDs "
-            "starting at 1 in the order first cited, with the exact source "
-            "filename or URL and its type (document or web). Cite only tool "
-            "sources. If the evidence cannot answer the question, use "
+            "with numbered references such as [1]. Use only the numbers in the "
+            "provided source list, and cite each source as a separate reference "
+            "such as [1] [2]. Do not write a separate citations list or use "
+            "[Source: ...] labels. If the evidence cannot answer the question, use "
             "status='insufficient_evidence'."
         )),
         HumanMessage(content=(
             f"Question: {run['question']}\n\n"
             f"Draft answer: {run['answer']}\n\n"
+            f"Available sources:\n{source_list}\n\n"
             f"Tool evidence:\n{evidence}"
         )),
     ])
     if not isinstance(final, StructuredAnswer):
         final = StructuredAnswer.model_validate(final)
 
-    ids = [citation.id for citation in final.citations]
-    if ids != list(range(1, len(ids) + 1)):
-        raise ValueError("Citation IDs must start at 1 and be sequential")
-    for citation in final.citations:
-        if sources.get(citation.source) != citation.type:
-            raise ValueError(f"Citation was not returned by a tool: {citation.source}")
-    if SOURCE_PATTERN.search(final.answer):
-        raise ValueError("Answer must use numbered citations")
-    answer_ids = {int(value) for value in CITATION_ID_PATTERN.findall(final.answer)}
-    if answer_ids != set(ids):
-        raise ValueError("Answer citations do not match the citations list")
-    if final.status == "answered" and not ids:
-        raise ValueError("An answered response needs at least one citation")
+    if final.status == "insufficient_evidence":
+        return response("insufficient_evidence", "I cannot find this in the available sources.", [])
+
+    used_ids = list(dict.fromkeys(
+        int(value) for value in CITATION_ID_PATTERN.findall(final.answer)
+    ))
+    if (
+        not used_ids
+        or any(source_id not in source_by_id for source_id in used_ids)
+        or SOURCE_PATTERN.search(final.answer)
+    ):
+        return response("insufficient_evidence", "I cannot provide an answer with verified citations.", [])
+
+    renumber = {old_id: new_id for new_id, old_id in enumerate(used_ids, start=1)}
+    answer = CITATION_ID_PATTERN.sub(
+        lambda match: f"[{renumber[int(match.group(1))]}]",
+        final.answer,
+    )
+    citations = [
+        Citation(
+            id=renumber[source_id],
+            source=source_by_id[source_id][0],
+            type=source_by_id[source_id][1],
+        ).model_dump()
+        for source_id in used_ids
+    ]
 
     return response(
         final.status,
-        final.answer,
-        [citation.model_dump() for citation in final.citations],
+        answer,
+        citations,
     )
 
 
