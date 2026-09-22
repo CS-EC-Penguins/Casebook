@@ -15,7 +15,7 @@ import sys
 import os
 import google.api_core.exceptions
 from pathlib import Path
-from typing import Annotated, TypedDict
+from typing import Annotated, Literal, TypedDict
 from tenacity import (
     retry,
     stop_after_attempt,
