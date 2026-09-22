@@ -19,6 +19,15 @@ tavily-python==0.7.26
 mcp==1.28.1
 langgraph==0.6.11
 langchain-mcp-adapters==0.1.14
-pydantic==2.13.5
-pytest==8.3.4
 coverage==7.6.9
+
+# Combined dependencies for all Week 11 labs. Install what each day's
+# README asks for, or install everything here up front.
+#
+# Pinned to the Week 10 verified set. ragas 0.4.3 holds langchain on 0.3.x,
+# so langgraph stays <1.0. pydantic v2 is required by with_structured_output.
+google-cloud-aiplatform==1.159.0
+tenacity==9.1.2
+pydantic==2.12.3
+pytest==9.1.1
+

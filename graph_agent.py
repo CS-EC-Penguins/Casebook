@@ -13,8 +13,15 @@ import json
 import re
 import sys
 import os
+import google.api_core.exceptions
 from pathlib import Path
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, TypedDict
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type
+)
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
@@ -89,7 +96,12 @@ def create_retrieve_tool(vector_store):
 
     return retrieve_tool
 
-
+@retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_random_exponential(multiplier=1, max=60),
+        retry=retry_if_exception_type(google.api_core.exceptions.ResourceExhausted) | retry_if_exception_type(google.api_core.exceptions.ServiceUnavailable)
+)
 @observe()
 def call_model(state: AgentState, model) -> dict:
     """Invoke the tool-bound model and append its response to graph state."""
@@ -302,7 +314,12 @@ async def run_agent_async(
     )
     return await structure_final_answer(run, base_model)
 
-
+@retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_random_exponential(multiplier=1, max=60),
+        retry=retry_if_exception_type(google.api_core.exceptions.ResourceExhausted) | retry_if_exception_type(google.api_core.exceptions.ServiceUnavailable)
+)
 @observe()
 def ask_agent(
     question: str,
