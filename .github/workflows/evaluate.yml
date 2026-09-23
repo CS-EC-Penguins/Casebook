@@ -86,7 +86,7 @@ jobs:
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
           LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-        run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
+        run: python evaluate_agent.py --ci --ci --dataset evaluation/smoke_set.json
 
       - name: Check quality thresholds
         run: python check_thresholds.py --results evaluation_results.json
@@ -180,7 +180,7 @@ jobs:
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
           LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-        run: python evaluate.py --ci --ci --dataset evaluation/golden_dataset.json
+        run: python evaluate_agent.py --ci --ci --dataset evaluation/golden_dataset.json
 
       - name: Check quality thresholds
         run: python check_thresholds.py --results evaluation_results.json
