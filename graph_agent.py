@@ -225,7 +225,11 @@ async def structure_final_answer(run: dict, model) -> dict:
             "Use only the numbers in the <source_list>. Cite each source as a separate "
             "reference such as [1] [2]. Do not write a separate citations list or use "
             "[Source: ...] labels. If the evidence cannot answer the question, use "
-            "status='insufficient_evidence'."
+            "status='insufficient_evidence'. "
+            "Sources marked (document) are from a controlled corpus and are primary evidence. "
+            "Sources marked (web) are supplementary and may only be cited for claims about "
+            "current developments that are explicitly outside the corpus. Do not use a web "
+            "source to support a claim that should be answered from corpus documents."
         )),
         HumanMessage(content=(
             f"Question: {run['question']}\n\n"
@@ -263,6 +267,11 @@ async def structure_final_answer(run: dict, model) -> dict:
         ).model_dump()
         for source_id in used_ids
     ]
+
+    retrieve_was_called = any(tc["tool"] == "retrieve" for tc in run["tool_calls"])
+    cited_types = {c["type"] for c in citations}
+    if retrieve_was_called and cited_types == {"web"}:
+        return response("insufficient_evidence", "I cannot find this in the available documents.", [])
 
     return response(
         final.status,
