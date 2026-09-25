@@ -95,7 +95,7 @@ class GraphAgentTests(unittest.TestCase):
 
         self.assertEqual(
             result,
-            "[Source: nist-ai-rmf.txt]\nGovern, Map, Measure, and Manage.",
+            "<passage source=\"nist-ai-rmf.txt\">\nGovern, Map, Measure, and Manage.\n</passage>",
         )
 
     def test_iteration_limit_returns_a_clear_failure(self):
