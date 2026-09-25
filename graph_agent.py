@@ -41,7 +41,7 @@ from pipeline import load_vector_store, retrieve as pipeline_retrieve
 MODEL_NAME = "gemini-2.5-flash"
 DEFAULT_MAX_ITERATIONS = 5
 SOURCE_PATTERN = re.compile(r"\[Source:\s*([^\]\n]+)\]")
-EVIDENCE_SOURCE_PATTERN = re.compile(r'<passage source="([^"]+)">')
+EVIDENCE_SOURCE_PATTERN = re.compile(r'<(?:passage|web_result) source="([^"]+)">')
 CITATION_ID_PATTERN = re.compile(r"\[(\d+)\]")
 ITERATION_LIMIT_ANSWER = "Could not produce a final answer within the iteration limit."
 

@@ -20,7 +20,7 @@ def web_search(query: str) -> str:
         return "No web results found."
 
     return "\n\n".join(
-        f"[Source: {item.get('url', 'unknown')}]\n{item.get('content', '')}"
+        f'<web_result source="{item.get("url", "unknown")}">\n{item.get("content", "")}\n</web_result>'
         for item in results
     )
 
