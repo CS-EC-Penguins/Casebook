@@ -242,9 +242,22 @@ def generate(question: str, passages: list[dict]) -> str:
 
     temperature=0 removes sampling randomness, so when an answer changes you
     know the retrieval changed rather than the model rolling a different dice.
+
+    Passages are placed in the SystemMessage (trusted corpus content) and the
+    user question is a separate HumanMessage, giving the model role-level
+    separation that makes prompt injection harder.
     """
+    numbered = []
+    for i, passage in enumerate(passages, 1):
+        filename = passage["source"].split("/")[-1]
+        numbered.append(f"[Passage {i} | Source: {filename}]\n{passage['content']}")
+    context = "\n\n".join(numbered)
+
     llm = ChatVertexAI(model_name=CHAT_MODEL, temperature=0, project=os.environ["GOOGLE_CLOUD_PROJECT"])
-    response = llm.invoke(build_prompt(question, passages))
+    response = llm.invoke([
+        SystemMessage(content=f"{SYSTEM_PROMPT}\n\nPassages:\n{context}"),
+        HumanMessage(content=question),
+    ])
     return response.content
 
 
