@@ -1,28 +1,28 @@
 [
   {
-    "question": "How do bats use echolocation to detect obstacles at night?",
+    "question": "What are loss-of-control scenarios?",
     "expected_tools": ["retrieve"],
-    "note": "Clear corpus question — bat-echolocation.txt"
+    "note": "Clear corpus question — uk-aisi-report.txt"
   },
   {
-    "question": "How do honeybees communicate the direction to a food source?",
+    "question": "What does the MANAGE function entail?",
     "expected_tools": ["retrieve"],
-    "note": "Clear corpus question — bee-communication.txt (waggle dance)"
+    "note": "Clear corpus question — nist-ai-rmf.txt"
   },
   {
-    "question": "What organisms live near deep-sea hydrothermal vents and how do they survive?",
+    "question": "How does the AI RMF define an AI system?",
     "expected_tools": ["retrieve"],
-    "note": "Clear corpus question — deep-sea-vents.txt"
+    "note": "Clear corpus question — nist-ai-rmf.txt"
   },
   {
-    "question": "What is coral bleaching?",
+    "question": "Which AI applications are subject to transparency regulation according to the EU AI Act?",
     "expected_tools": ["retrieve"],
-    "note": "Clear corpus question — coral-reefs.txt"
+    "note": "Clear corpus question — eu-ai-act.txt"
   },
   {
-    "question": "Compare the navigation mechanisms used by bats and by honeybees.",
+    "question": "How is risk best defined with respect to AI systems?",
     "expected_tools": ["retrieve"],
-    "note": "Multi-hop corpus question — requires bat-echolocation.txt and bee-communication.txt"
+    "note": "Multi-hop corpus question — eu-ai-act.txt and nist-ai-rmf.txt"
   },
   {
     "question": "What were the main news stories in science this week?",
@@ -35,14 +35,14 @@
     "note": "Current-events question"
   },
   {
-    "question": "What are the main threats to coral reefs?",
+    "question": "Which approach is one of the more tractable explainability approaches available?",
     "expected_tools": ["retrieve"],
-    "note": "Corpus question — coral-reefs.txt"
+    "note": "Corpus question — meridian-ai-governance-report.txt"
   },
   {
-    "question": "What frequency range do bats use for echolocation, and how does that compare to human hearing?",
+    "question": "Which AI applications are prohibited according to the EU AI Act?",
     "expected_tools": ["retrieve"],
-    "note": "Corpus question — bat-echolocation.txt"
+    "note": "Corpus question — eu-ai-act.txt"
   },
   {
     "question": "What is the current price of crude oil?",
