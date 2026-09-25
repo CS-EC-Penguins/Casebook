@@ -69,7 +69,7 @@ def run_ragas(outputs: list[dict]):
     dataset = Dataset.from_dict(data)
     
     run_config = RunConfig(
-        timeout=600,
+        timeout=700,
         max_workers=16,
         log_tenacity=True,
     )

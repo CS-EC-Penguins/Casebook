@@ -56,7 +56,9 @@ def judge_trajectory(query: str, tool_calls: list[dict]) -> dict:
         f"  {i + 1}. {tc['tool']}({json.dumps(tc['args'])})"
         for i, tc in enumerate(tool_calls)
     ) or "  (no tools called)"
-    prompt = TRAJECTORY_JUDGE_PROMPT.format(query=query, tool_calls=formatted_calls)
+    prompt = (TRAJECTORY_JUDGE_PROMPT
+              .replace("{query}", query)
+              .replace("{tool_calls}", formatted_calls))
     response = judge.invoke(prompt)
     try:
         return json.loads(response.content)
