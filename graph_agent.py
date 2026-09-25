@@ -35,7 +35,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from pydantic import BaseModel, Field
 
-from pipeline import load_vector_store, retrieve as pipeline_retrieve
+from pipeline import judge_input, load_vector_store, retrieve as pipeline_retrieve
 
 
 MODEL_NAME = "gemini-2.5-flash"
@@ -342,6 +342,18 @@ def ask_agent(
     model=None,
 ) -> dict:
     """Run one question through the MCP-enabled LangGraph agent."""
+    verdict = judge_input(question)
+    if verdict.status == "malicious":
+        return {
+            "question": question,
+            "status": "blocked",
+            "answer": "Malicious input detected. I can't process that request.",
+            "citations": [],
+            "tool_calls": [],
+            "contexts": [],
+            "iterations": 0,
+        }
+
     store = vector_store if vector_store is not None else load_vector_store()
     return asyncio.run(
         run_agent_async(
