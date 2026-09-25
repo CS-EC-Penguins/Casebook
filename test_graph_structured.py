@@ -1,6 +1,7 @@
 """Offline tests for the graph agent's structured final answer."""
 
 import unittest
+from typing import Annotated, Literal, TypedDict
 
 from graph_agent import (
     ITERATION_LIMIT_ANSWER,
@@ -29,7 +30,7 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
             "question": "What are the Core functions?",
             "answer": "GOVERN, MAP, MEASURE, and MANAGE.",
             "tool_calls": [{"tool": "retrieve", "args": {"query": "AI RMF Core"}}],
-            "contexts": ["[Source: nist-ai-rmf.txt]\nThe Core has four functions."],
+            "contexts": ['<passage source="nist-ai-rmf.txt">\nThe Core has four functions.\n</passage>'],
             "iterations": 2,
         }
 
@@ -79,8 +80,8 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_citations_are_renumbered_in_order_of_first_use(self):
         self.run["contexts"] = [
-            "[Source: first.txt]\nFirst finding.\n\n"
-            "[Source: second.txt]\nSecond finding."
+            '<passage source="first.txt">\nFirst finding.\n</passage>\n\n'
+            '<passage source="second.txt">\nSecond finding.\n</passage>'
         ]
         model = FakeModel(StructuredAnswer(
             status="answered",
@@ -99,7 +100,8 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         ])
 
     async def test_web_source_has_web_type(self):
-        self.run["contexts"] = ["[Source: https://example.org/news]\nCurrent news."]
+        self.run["contexts"] = ['<passage source="https://example.org/news">\nCurrent news.\n</passage>']
+        self.run["tool_calls"] = [{"tool": "web_search", "args": {"query": "current news"}}]
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="Current news. [1]",

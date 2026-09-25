@@ -7,6 +7,13 @@ Usage:
 import json
 from langchain_google_vertexai import ChatVertexAI
 from graph_agent import ask_agent
+import google.api_core.exceptions
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type
+)
 
 TRAJECTORY_JUDGE_PROMPT = """You are evaluating whether an AI agent made appropriate tool choices.
 
@@ -27,7 +34,12 @@ Score the appropriateness of the tool selection from 0.0 to 1.0.
 Return a JSON object with exactly two keys: "score" (a float) and "reasoning" (a string).
 """
 
-
+@retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_random_exponential(multiplier=1, max=60),
+        retry=retry_if_exception_type(google.api_core.exceptions.ResourceExhausted) | retry_if_exception_type(google.api_core.exceptions.ServiceUnavailable)
+)
 def judge_trajectory(query: str, tool_calls: list[dict]) -> dict:
     """Score one query's tool-call trajectory using an LLM judge.
 
@@ -44,7 +56,9 @@ def judge_trajectory(query: str, tool_calls: list[dict]) -> dict:
         f"  {i + 1}. {tc['tool']}({json.dumps(tc['args'])})"
         for i, tc in enumerate(tool_calls)
     ) or "  (no tools called)"
-    prompt = TRAJECTORY_JUDGE_PROMPT.format(query=query, tool_calls=formatted_calls)
+    prompt = (TRAJECTORY_JUDGE_PROMPT
+              .replace("{query}", query)
+              .replace("{tool_calls}", formatted_calls))
     response = judge.invoke(prompt)
     try:
         return json.loads(response.content)

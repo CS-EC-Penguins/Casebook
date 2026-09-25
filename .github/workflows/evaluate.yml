@@ -5,6 +5,8 @@ on:
     branches: [main, charlie_branch]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 2 * * *'  # 02:00 UTC every day
 
 jobs:
   quality-gate:
@@ -61,11 +63,11 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           coverage run -m pytest
-          coverage report -m --fail-under=20
+          coverage report -m --fail-under=35
           coverage xml
 
       - name: Upload coverage report
@@ -82,9 +84,9 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-        run: python evaluate.py --ci --ci --dataset evaluation/smoke_set.json
+        run: python evaluate_agent.py --ci --dataset evaluation/smoke_set.json
 
       - name: Check quality thresholds
         run: python check_thresholds.py --results evaluation_results.json
@@ -97,7 +99,7 @@ jobs:
           path: |
             evaluation_results.json
             evaluation/pipeline_outputs.json
-            evaluation/ragas_results.csv
+            evaluation/agent_ragas_results.csv
           if-no-files-found: warn
 
   full-evaluation:
@@ -154,7 +156,7 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
   
         run: |
@@ -176,9 +178,9 @@ jobs:
           PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-        run: python evaluate.py --ci --ci --dataset evaluation/golden_dataset.json
+        run: python evaluate_agent.py --ci --dataset evaluation/golden_dataset.json
 
       - name: Check quality thresholds
         run: python check_thresholds.py --results evaluation_results.json
@@ -191,5 +193,5 @@ jobs:
           path: |
             evaluation_results.json
             evaluation/pipeline_outputs.json
-            evaluation/ragas_results.csv
+            evaluation/agent_ragas_results.csv
           if-no-files-found: warn

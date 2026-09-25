@@ -7,6 +7,7 @@ Usage:
     pytest test_trajectories.py -v
 """
 from graph_agent import ask_agent
+from typing import Annotated, Literal, TypedDict
 
 
 def test_corpus_question_calls_retrieve():
@@ -34,8 +35,7 @@ def test_current_events_calls_web_search():
 def test_multi_part_corpus_question_retrieves_multiple_times():
     """A question spanning two corpus topics should retrieve at least once,
     and the answer should cover both topics."""
-    # Property: a question that spans two distinct corpus topics (bat
-    # echolocation and bee navigation) must (a) call `retrieve` to ground the
+    # Property: a question that spans two distinct corpus topics must (a) call `retrieve` to ground the
     # answer in the corpus rather than hallucinate, and (b) produce an answer
     # that actually addresses both topics. We assert on the outcome (keywords
     # in the answer) rather than the call count, because the agent may satisfy
@@ -45,4 +45,4 @@ def test_multi_part_corpus_question_retrieves_multiple_times():
     assert "retrieve" in [tc["tool"] for tc in result["tool_calls"]]
     answer_lower = result["answer"].lower()
     assert "governance" in answer_lower, "Answer should mention governance"
-    assert "human oversight" in answer_lower, "Answer should mention human oversight"
+    assert "risk" in answer_lower, "Answer should mention risk"

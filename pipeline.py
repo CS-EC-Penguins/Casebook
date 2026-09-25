@@ -25,6 +25,7 @@ import os
 import sys
 from typing import Literal
 
+import google.api_core.exceptions
 from langfuse import observe
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -33,6 +34,12 @@ from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
 from langchain_postgres.vectorstores import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type
+)
 
 CORPUS_PATH = "new_corpus/"
 COLLECTION_NAME = "casebook_docs"
@@ -103,6 +110,13 @@ rewrite_prompt = ChatPromptTemplate.from_messages([
 
 rewriter = rewrite_prompt | ChatVertexAI(model_name="gemini-2.5-flash", temperature=0, project=os.environ["GOOGLE_CLOUD_PROJECT"])
 
+
+@retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_random_exponential(multiplier=1, max=60),
+        retry=retry_if_exception_type(google.api_core.exceptions.ResourceExhausted) | retry_if_exception_type(google.api_core.exceptions.ServiceUnavailable)
+)
 def rewrite_query(query: str) -> str:
     return rewriter.invoke({"query": query}).content
 
