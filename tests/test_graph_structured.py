@@ -55,8 +55,8 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result["tool_calls"], self.run["tool_calls"])
         self.assertEqual(result["contexts"], self.run["contexts"])
-        self.assertIn("The Core has four functions", model.messages[-1].content)
-        self.assertIn("[1] nist-ai-rmf.txt (document)", model.messages[-1].content)
+        self.assertIn("The Core has four functions", model.messages[0].content)
+        self.assertIn("[1] nist-ai-rmf.txt (document)", model.messages[0].content)
 
     async def test_unknown_citation_number_returns_insufficient_evidence(self):
         model = FakeModel(StructuredAnswer(
