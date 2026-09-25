@@ -67,7 +67,7 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           coverage run -m pytest
-          coverage report -m --fail-under=20
+          coverage report -m --fail-under=35
           coverage xml
 
       - name: Upload coverage report
