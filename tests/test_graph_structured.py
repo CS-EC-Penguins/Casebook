@@ -5,6 +5,7 @@ from typing import Annotated, Literal, TypedDict
 
 from graph_agent import (
     ITERATION_LIMIT_ANSWER,
+    GroundedClaim,
     StructuredAnswer,
     structure_final_answer,
 )
@@ -38,6 +39,7 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="The four functions are GOVERN, MAP, MEASURE, and MANAGE. [1]",
+            grounded_claims=[GroundedClaim(claim="The Core has four functions: GOVERN, MAP, MEASURE, and MANAGE.", source_id=1)],
         ))
 
         result = await structure_final_answer(self.run, model)
@@ -53,13 +55,14 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result["tool_calls"], self.run["tool_calls"])
         self.assertEqual(result["contexts"], self.run["contexts"])
-        self.assertIn("The Core has four functions", model.messages[-1].content)
-        self.assertIn("[1] nist-ai-rmf.txt (document)", model.messages[-1].content)
+        self.assertIn("The Core has four functions", model.messages[0].content)
+        self.assertIn("[1] nist-ai-rmf.txt (document)", model.messages[0].content)
 
     async def test_unknown_citation_number_returns_insufficient_evidence(self):
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="An answer. [2]",
+            grounded_claims=[GroundedClaim(claim="An answer.", source_id=2)],
         ))
 
         result = await structure_final_answer(self.run, model)
@@ -86,6 +89,10 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="Second finding [2]. First finding [1]. Second finding again [2].",
+            grounded_claims=[
+                GroundedClaim(claim="Second finding.", source_id=2),
+                GroundedClaim(claim="First finding.", source_id=1),
+            ],
         ))
 
         result = await structure_final_answer(self.run, model)
@@ -105,6 +112,7 @@ class StructuredAnswerTests(unittest.IsolatedAsyncioTestCase):
         model = FakeModel(StructuredAnswer(
             status="answered",
             answer="Current news. [1]",
+            grounded_claims=[GroundedClaim(claim="Current news.", source_id=1)],
         ))
 
         result = await structure_final_answer(self.run, model)

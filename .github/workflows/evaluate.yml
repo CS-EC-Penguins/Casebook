@@ -88,9 +88,6 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate_agent.py --ci --dataset evaluation/smoke_set.json
 
-      - name: Check quality thresholds
-        run: python check_thresholds.py --results evaluation_results.json
-
       - name: Upload evaluation results
         uses: actions/upload-artifact@v4
         if: always()
@@ -101,6 +98,9 @@ jobs:
             evaluation/pipeline_outputs.json
             evaluation/agent_ragas_results.csv
           if-no-files-found: warn
+
+      - name: Check quality thresholds
+        run: python check_thresholds.py --results evaluation_results.json
 
   full-evaluation:
     if: github.event_name == 'push'
@@ -182,9 +182,6 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python evaluate_agent.py --ci --dataset evaluation/golden_dataset.json
 
-      - name: Check quality thresholds
-        run: python check_thresholds.py --results evaluation_results.json
-
       - name: Upload evaluation results
         uses: actions/upload-artifact@v4
         if: always()
@@ -195,3 +192,6 @@ jobs:
             evaluation/pipeline_outputs.json
             evaluation/agent_ragas_results.csv
           if-no-files-found: warn
+
+      - name: Check quality thresholds
+        run: python check_thresholds.py --results evaluation_results.json

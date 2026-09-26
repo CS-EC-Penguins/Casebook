@@ -1,7 +1,9 @@
 """Run the Casebook agent over the golden dataset and score it with RAGAS."""
 import argparse
+import math
 import json
 from pathlib import Path
+import sys
 
 from datasets import Dataset
 from ragas import evaluate, RunConfig
@@ -18,12 +20,12 @@ from pipeline import load_vector_store
 
 
 DATASET_PATH = Path("evaluation/golden_dataset.json")
-OUTPUT_PATH = Path("evaluation/agent_outputs.json")
-RESULTS_PATH = Path("evaluation/agent_ragas_results.csv")
+OUTPUT_PATH = Path("evaluation/pipeline_outputs.json")
+RESULTS_PATH = Path("evaluation/ragas_results.csv")
 
 
-def collect_outputs(vector_store) -> list[dict]:
-    with DATASET_PATH.open("r", encoding="utf-8") as file:
+def collect_outputs(vector_store, dataset_path: Path = DATASET_PATH) -> list[dict]:
+    with dataset_path.open("r", encoding="utf-8") as file:
         golden_dataset = json.load(file)
 
     outputs = []
@@ -72,10 +74,22 @@ def run_ragas(outputs: list[dict]) -> None:
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
         run_config=run_config,
+        raise_exceptions=True,
     )
-    print(result)
-    result.to_pandas().to_csv(RESULTS_PATH, index=False)
+
+    df = result.to_pandas()
+    df.to_csv(RESULTS_PATH, index=False)   # save first so the failing rows can be inspected
     print(f"Per-query results saved to {RESULTS_PATH}")
+    
+    metric_cols = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
+    nan_rows = df[df[metric_cols].isna().any(axis=1)]
+    if not nan_rows.empty:
+        for _, row in nan_rows.iterrows():
+            bad = [m for m in metric_cols if math.isnan(row[m])]
+            print(f"::error::NaN score for {bad} on question: {row.get('user_input', row.get('question'))}")
+        sys.exit(1)
+
+    return result
 
 def main():
     parser = argparse.ArgumentParser()
@@ -86,6 +100,7 @@ def main():
     vector_store = load_vector_store()
     outputs = collect_outputs(vector_store, args.dataset)
     df = run_ragas(outputs).to_pandas()
+    
     results = {
         "faithfulness": float(df["faithfulness"].mean()),
         "answer_relevancy": float(df["answer_relevancy"].mean()),
@@ -102,4 +117,4 @@ def main():
             print(f"{metric}: {score:.3f}")
 
 if __name__ == "__main__":
-    run_ragas(collect_outputs(load_vector_store()))
+    main()
