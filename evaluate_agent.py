@@ -1,7 +1,9 @@
 """Run the Casebook agent over the golden dataset and score it with RAGAS."""
 import argparse
+import math
 import json
 from pathlib import Path
+import sys
 
 from datasets import Dataset
 from ragas import evaluate, RunConfig
@@ -72,10 +74,21 @@ def run_ragas(outputs: list[dict]) -> None:
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
         run_config=run_config,
+        raise_exceptions=True,
     )
 
-    result.to_pandas().to_csv(RESULTS_PATH, index=False)
+    df = result.to_pandas()
+    df.to_csv(RESULTS_PATH, index=False)   # save first so the failing rows can be inspected
     print(f"Per-query results saved to {RESULTS_PATH}")
+    
+    metric_cols = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
+    nan_rows = df[df[metric_cols].isna().any(axis=1)]
+    if not nan_rows.empty:
+        for _, row in nan_rows.iterrows():
+            bad = [m for m in metric_cols if math.isnan(row[m])]
+            print(f"::error::NaN score for {bad} on question: {row.get('user_input', row.get('question'))}")
+        sys.exit(1)
+
     return result
 
 def main():
