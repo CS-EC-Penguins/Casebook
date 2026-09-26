@@ -47,8 +47,8 @@ CHAT_MODEL = "gemini-2.5-flash"
 
 # DECISION: how much text goes in each chunk, and how much neighbouring chunks
 # share. The chunking lab shows you what happens when you move them.
-CHUNK_SIZE = 800
-CHUNK_OVERLAP = 150
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", 800))
+CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", 150))
 
 #Encode the chunk size and overlap into the collection name
 COLLECTION_NAME = f"casebook_docs_cs{CHUNK_SIZE}_co{CHUNK_OVERLAP}" 
