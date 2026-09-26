@@ -18,12 +18,12 @@ from pipeline import load_vector_store
 
 
 DATASET_PATH = Path("evaluation/golden_dataset.json")
-OUTPUT_PATH = Path("evaluation/agent_outputs.json")
-RESULTS_PATH = Path("evaluation/agent_ragas_results.csv")
+OUTPUT_PATH = Path("evaluation/pipeline_outputs.json")
+RESULTS_PATH = Path("evaluation/ragas_results.csv")
 
 
-def collect_outputs(vector_store) -> list[dict]:
-    with DATASET_PATH.open("r", encoding="utf-8") as file:
+def collect_outputs(vector_store, dataset_path: Path = DATASET_PATH) -> list[dict]:
+    with dataset_path.open("r", encoding="utf-8") as file:
         golden_dataset = json.load(file)
 
     outputs = []
@@ -73,9 +73,10 @@ def run_ragas(outputs: list[dict]) -> None:
         embeddings=get_ragas_embeddings(),
         run_config=run_config,
     )
-    print(result)
+
     result.to_pandas().to_csv(RESULTS_PATH, index=False)
     print(f"Per-query results saved to {RESULTS_PATH}")
+    return result
 
 def main():
     parser = argparse.ArgumentParser()
@@ -86,6 +87,7 @@ def main():
     vector_store = load_vector_store()
     outputs = collect_outputs(vector_store, args.dataset)
     df = run_ragas(outputs).to_pandas()
+    
     results = {
         "faithfulness": float(df["faithfulness"].mean()),
         "answer_relevancy": float(df["answer_relevancy"].mean()),
@@ -102,4 +104,4 @@ def main():
             print(f"{metric}: {score:.3f}")
 
 if __name__ == "__main__":
-    run_ragas(collect_outputs(load_vector_store()))
+    main()
