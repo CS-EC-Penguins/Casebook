@@ -7,6 +7,7 @@ on:
 
 jobs:
   retrieval-comparison:
+
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: dev
@@ -72,3 +73,30 @@ jobs:
             evaluation_results_k${{ matrix.k }}.json
             evaluation/ragas_results_k${{ matrix.k }}.csv
           if-no-files-found: warn
+  
+  compare-retrieval-configs:
+    needs: retrieval-comparison
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: retrieval-results-k4
+          path: results/k4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: retrieval-results-k6
+          path: results/k6
+
+      - name: Build comparison table
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          k4 = json.load(open("results/k4/evaluation_results_k4.json"))
+          k6 = json.load(open("results/k6/evaluation_results_k6.json"))
+          print("| metric | k=4 | k=6 | delta |")
+          print("|---|---|---|---|")
+          for metric in k4:
+              d = k6[metric] - k4[metric]
+              print(f"| {metric} | {k4[metric]:.3f} | {k6[metric]:.3f} | {d:+.3f} |")
+          PY
