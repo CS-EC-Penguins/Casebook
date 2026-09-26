@@ -1,0 +1,102 @@
+name: Retrieval Comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  retrieval-comparison:
+
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: dev
+    strategy:
+      fail-fast: false
+      matrix:
+        k: [4, 6]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
+
+      - name: Start Cloud SQL Auth Proxy
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+        run: |
+          set -euxo pipefail
+          curl -fsSLo cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            "${GOOGLE_CLOUD_PROJECT}:europe-west2:casebook-pg" &
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432; then echo ready; exit 0; fi
+            sleep 2
+          done
+          echo "proxy not ready"; exit 1
+
+      - name: Run evaluation (k=${{ matrix.k }})
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          RETRIEVAL_K: ${{ matrix.k }}
+        run: python evaluate.py --ci --dataset evaluation/golden_dataset.json
+
+      - name: Tag outputs with k
+        run: |
+          mv evaluation_results.json evaluation_results_k${{ matrix.k }}.json
+          mv evaluation/ragas_results.csv evaluation/ragas_results_k${{ matrix.k }}.csv
+
+      - name: Upload results for k=${{ matrix.k }}
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: retrieval-results-k${{ matrix.k }}
+          path: |
+            evaluation_results_k${{ matrix.k }}.json
+            evaluation/ragas_results_k${{ matrix.k }}.csv
+          if-no-files-found: warn
+  
+  compare-retrieval-configs:
+    needs: retrieval-comparison
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: retrieval-results-k4
+          path: results/k4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: retrieval-results-k6
+          path: results/k6
+
+      - name: Build comparison table
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          k4 = json.load(open("results/k4/evaluation_results_k4.json"))
+          k6 = json.load(open("results/k6/evaluation_results_k6.json"))
+          print("| metric | k=4 | k=6 | delta |")
+          print("|---|---|---|---|")
+          for metric in k4:
+              d = k6[metric] - k4[metric]
+              print(f"| {metric} | {k4[metric]:.3f} | {k6[metric]:.3f} | {d:+.3f} |")
+          PY

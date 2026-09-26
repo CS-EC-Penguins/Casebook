@@ -50,10 +50,7 @@ Use the retrieve tool for questions about the EU AI Act, NIST AI RMF, the
 International AI Safety Report 2026, and the Meridian AI governance report.
 Use web_search only for current developments or facts outside that corpus.
 For a question combining corpus and current information, call both tools and
-keep their evidence clearly distinguished. When a question explicitly references
-or compares multiple distinct documents (e.g. "compare the UK AISI Report and
-the Meridian report"), call retrieve separately for each document before
-synthesising your answer — one targeted query per document. Before answering a
+keep their evidence clearly distinguished. Before answering a
 factual question, call the appropriate tool. Cite every factual claim using the
 source labels returned by the tools. If the tools do not contain the answer,
 say so. Do not present general model knowledge as sourced evidence."""

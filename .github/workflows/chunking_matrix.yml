@@ -1,0 +1,118 @@
+name: Chunking Comparison
+
+on:
+  workflow_dispatch:
+
+jobs:
+  chunking-comparison:
+    runs-on: ubuntu-latest
+    environment: dev
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: cs400-co50
+            chunk_size: 800
+            chunk_overlap: 150
+          - label: cs800-co150
+            chunk_size: 1200
+            chunk_overlap: 250
+          - label: cs1200-co200
+            chunk_size: 1600
+            chunk_overlap: 350
+    env:
+      CHUNK_SIZE: ${{ matrix.chunk_size }}
+      CHUNK_OVERLAP: ${{ matrix.chunk_overlap }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CLOUD_SA_KEY }}
+
+      - name: Start Cloud SQL Auth Proxy
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+        run: |
+          set -euxo pipefail
+          curl -fsSLo cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            "${GOOGLE_CLOUD_PROJECT}:europe-west2:casebook-pg" &
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432; then echo ready; exit 0; fi
+            sleep 2
+          done
+          echo "proxy not ready"; exit 1
+
+      - name: Build vector store (${{ matrix.label }})
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+        run: python pipeline.py index
+
+      - name: Run evaluation (${{ matrix.label }})
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: europe-west4
+          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          
+        run: python evaluate.py --ci --dataset evaluation/golden_dataset.json
+
+      - name: Tag outputs with config
+        run: |
+          mv evaluation_results.json evaluation_results_${{ matrix.label }}.json
+          mv evaluation/ragas_results.csv evaluation/ragas_results_${{ matrix.label }}.csv
+
+      - name: Upload results for ${{ matrix.label }}
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chunking-results-${{ matrix.label }}
+          path: |
+            evaluation_results_${{ matrix.label }}.json
+            evaluation/ragas_results_${{ matrix.label }}.csv
+          if-no-files-found: warn
+
+  compare-chunking-configs:
+    needs: chunking-comparison
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: chunking-results-*
+          path: results
+          merge-multiple: false
+
+      - name: Build comparison table
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, glob
+
+          rows = []
+          for path in glob.glob("results/chunking-results-*/evaluation_results_*.json"):
+              label = path.split("evaluation_results_")[-1].removesuffix(".json")
+              rows.append((label, json.load(open(path))))
+
+          rows.sort(key=lambda r: r[1]["context_precision"], reverse=True)
+
+          metrics = list(rows[0][1].keys())
+          print("| config | " + " | ".join(metrics) + " |")
+          print("|---|" + "|".join(["---"] * len(metrics)) + "|")
+          for label, scores in rows:
+              print(f"| {label} | " + " | ".join(f"{scores[m]:.3f}" for m in metrics) + " |")
+          PY
