@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from langfuse.langchain import CallbackHandler   # not langfuse.callback — that path is gone in 4.x
 from datasets import Dataset
@@ -56,48 +57,52 @@ def collect_outputs(vector_store, dataset_path: Path = DATASET_PATH) -> list[dic
     return outputs
 
 
-def run_ragas(outputs: list[dict]) -> None:
-    dataset = Dataset.from_dict(
-        {
-            "question": [item["question"] for item in outputs],
-            "answer": [item["answer"] for item in outputs],
-            "contexts": [item["contexts"] for item in outputs],
-            "ground_truth": [item["ground_truth"] for item in outputs],
-        }
-    )
 
-    langfuse_handler = CallbackHandler()  # picks up LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST
-                                               # from the env vars already set in evaluate.yml — no extra args needed
-    
-    # Metrics that don't call embeddings synchronously — safe at high concurrency
-    fast_config = RunConfig(timeout=700, max_workers=16, log_tenacity=True)
-    result_fast = evaluate(
-        dataset=dataset,
-        metrics=[faithfulness, context_precision, context_recall],
-        llm=get_ragas_llm(),
-        embeddings=get_ragas_embeddings(),
-        run_config=fast_config,
-        callbacks=[langfuse_handler],
-    )
 
-    # answer_relevancy calls embed_query()/embed_documents() synchronously inside
-    # its async scorer (ragas/metrics/_answer_relevance.py), which blocks the whole
-    # event loop for its duration — so it can't share a high-concurrency pool with
-    # anything else without stalling it. Run it alone, at low concurrency.
+
+def run_ragas(outputs: list[dict]) -> pd.DataFrame:
+    dataset = Dataset.from_dict({
+        "question": [item["question"] for item in outputs],
+        "answer": [item["answer"] for item in outputs],
+        "contexts": [item["contexts"] for item in outputs],
+        "ground_truth": [item["ground_truth"] for item in outputs],
+    })
+
+    fast_config = RunConfig(timeout=700, max_workers=24, log_tenacity=True)
     slow_config = RunConfig(timeout=700, max_workers=2, log_tenacity=True)
-    result_slow = evaluate(
-        dataset=dataset,
-        metrics=[answer_relevancy],
-        llm=get_ragas_llm(),
-        embeddings=get_ragas_embeddings(),
-        run_config=slow_config,
-        callbacks=[langfuse_handler],
-    )
 
-     # short-lived CI process: force the export instead of relying on atexit
+    def run_fast():
+        return evaluate(
+            dataset=dataset,
+            metrics=[faithfulness, context_precision, context_recall],
+            llm=get_ragas_llm(),
+            embeddings=get_ragas_embeddings(),
+            run_config=fast_config,
+            callbacks=[CallbackHandler()],
+        )
+
+    def run_slow():
+        return evaluate(
+            dataset=dataset,
+            metrics=[answer_relevancy],
+            llm=get_ragas_llm(),
+            embeddings=get_ragas_embeddings(),
+            run_config=slow_config,
+            callbacks=[CallbackHandler()],
+        )
+
+    # Two separate evaluate() calls, each with its own event loop in its own
+    # thread — the blocking embed_query/embed_documents call inside run_slow()
+    # can no longer stall run_fast(), and they now overlap instead of stacking.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        fast_future = pool.submit(run_fast)
+        slow_future = pool.submit(run_slow)
+        result_fast = fast_future.result()
+        result_slow = slow_future.result()
+
     from langfuse import get_client
     get_client().flush()
-    
+
     df = result_fast.to_pandas()
     df["answer_relevancy"] = result_slow.to_pandas()["answer_relevancy"]
     df.to_csv(RESULTS_PATH, index=False)
