@@ -100,9 +100,9 @@ def run_ragas(outputs: list[dict]) -> None:
     
     df = result_fast.to_pandas()
     df["answer_relevancy"] = result_slow.to_pandas()["answer_relevancy"]
-    df.to_csv(RESULTS_PATH, index=False)   # save first so the failing rows can be inspected
+    df.to_csv(RESULTS_PATH, index=False)
     print(f"Per-query results saved to {RESULTS_PATH}")
-    
+
     metric_cols = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
     nan_rows = df[df[metric_cols].isna().any(axis=1)]
     if not nan_rows.empty:
@@ -111,49 +111,7 @@ def run_ragas(outputs: list[dict]) -> None:
             print(f"::error::NaN score for {bad} on question: {row.get('user_input', row.get('question'))}")
         sys.exit(1)
 
-    return result_fast | result_slow
-
-
-
-
-
-def run_ragas(outputs: list[dict]) -> None:
-    dataset = Dataset.from_dict({...})  # unchanged
-
-    langfuse_handler = CallbackHandler()
-
-    # Metrics that don't call embeddings synchronously — safe at high concurrency
-    fast_config = RunConfig(timeout=700, max_workers=16, log_tenacity=True)
-    result_fast = evaluate(
-        dataset=dataset,
-        metrics=[faithfulness, context_precision, context_recall],
-        llm=get_ragas_llm(),
-        embeddings=get_ragas_embeddings(),
-        run_config=fast_config,
-        callbacks=[langfuse_handler],
-    )
-
-    # answer_relevancy calls embed_query()/embed_documents() synchronously inside
-    # its async scorer (ragas/metrics/_answer_relevance.py), which blocks the whole
-    # event loop for its duration — so it can't share a high-concurrency pool with
-    # anything else without stalling it. Run it alone, at low concurrency.
-    slow_config = RunConfig(timeout=700, max_workers=2, log_tenacity=True)
-    result_slow = evaluate(
-        dataset=dataset,
-        metrics=[answer_relevancy],
-        llm=get_ragas_llm(),
-        embeddings=get_ragas_embeddings(),
-        run_config=slow_config,
-        callbacks=[langfuse_handler],
-    )
-
-    df = result_fast.to_pandas()
-    df["answer_relevancy"] = result_slow.to_pandas()["answer_relevancy"]
-    ...
-
-
-
-
+    return df
 
 def main():
     parser = argparse.ArgumentParser()
@@ -163,7 +121,7 @@ def main():
 
     vector_store = load_vector_store()
     outputs = collect_outputs(vector_store, args.dataset)
-    df = run_ragas(outputs).to_pandas()
+    df = run_ragas(outputs)
     
     results = {
         "faithfulness": float(df["faithfulness"].mean()),
