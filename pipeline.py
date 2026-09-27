@@ -213,6 +213,7 @@ def retrieve(query: str, vector_store, k: int = TOP_K) -> list[dict]:
     present, so keep the shape if you change the body.
     """
     results = vector_store.similarity_search_with_score(query, k=k)
+    #print(results)
     return [
         {
             "content": doc.page_content,
