@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import sys
 import logging
+from concurrent.futures import ThreadPoolExecutor
+import pandas as pd
 
 from langfuse.langchain import CallbackHandler   # not langfuse.callback — that path is gone in 4.x
 from datasets import Dataset
@@ -56,42 +58,57 @@ def collect_outputs(vector_store, dataset_path: Path = DATASET_PATH) -> list[dic
     return outputs
 
 
-def run_ragas(outputs: list[dict]) -> None:
-    dataset = Dataset.from_dict(
-        {
-            "question": [item["question"] for item in outputs],
-            "answer": [item["answer"] for item in outputs],
-            "contexts": [item["contexts"] for item in outputs],
-            "ground_truth": [item["ground_truth"] for item in outputs],
-        }
-    )
 
-    run_config = RunConfig(
-            timeout=700,
-            max_workers=16,
-            log_tenacity=True,
+
+
+def run_ragas(outputs: list[dict]) -> pd.DataFrame:
+    dataset = Dataset.from_dict({
+        "question": [item["question"] for item in outputs],
+        "answer": [item["answer"] for item in outputs],
+        "contexts": [item["contexts"] for item in outputs],
+        "ground_truth": [item["ground_truth"] for item in outputs],
+    })
+
+    fast_config = RunConfig(timeout=700, max_workers=24, log_tenacity=True)
+    slow_config = RunConfig(timeout=700, max_workers=2, log_tenacity=True)
+
+    def run_fast():
+        return evaluate(
+            dataset=dataset,
+            metrics=[faithfulness, context_precision, context_recall],
+            llm=get_ragas_llm(),
+            embeddings=get_ragas_embeddings(),
+            run_config=fast_config,
+            callbacks=[CallbackHandler()],
         )
 
-    langfuse_handler = CallbackHandler()  # picks up LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST
-                                               # from the env vars already set in evaluate.yml — no extra args needed
-    
-    result = evaluate(
-        dataset=dataset,
-        metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
-        llm=get_ragas_llm(),
-        embeddings=get_ragas_embeddings(),
-        run_config=run_config,
-        callbacks=[langfuse_handler],
-    )
+    def run_slow():
+        return evaluate(
+            dataset=dataset,
+            metrics=[answer_relevancy],
+            llm=get_ragas_llm(),
+            embeddings=get_ragas_embeddings(),
+            run_config=slow_config,
+            callbacks=[CallbackHandler()],
+        )
 
-     # short-lived CI process: force the export instead of relying on atexit
+    # Two separate evaluate() calls, each with its own event loop in its own
+    # thread — the blocking embed_query/embed_documents call inside run_slow()
+    # can no longer stall run_fast(), and they now overlap instead of stacking.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        fast_future = pool.submit(run_fast)
+        slow_future = pool.submit(run_slow)
+        result_fast = fast_future.result()
+        result_slow = slow_future.result()
+
     from langfuse import get_client
     get_client().flush()
-    
-    df = result.to_pandas()
-    df.to_csv(RESULTS_PATH, index=False)   # save first so the failing rows can be inspected
+
+    df = result_fast.to_pandas()
+    df["answer_relevancy"] = result_slow.to_pandas()["answer_relevancy"]
+    df.to_csv(RESULTS_PATH, index=False)
     print(f"Per-query results saved to {RESULTS_PATH}")
-    
+
     metric_cols = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
     nan_rows = df[df[metric_cols].isna().any(axis=1)]
     if not nan_rows.empty:
@@ -100,7 +117,7 @@ def run_ragas(outputs: list[dict]) -> None:
             print(f"::error::NaN score for {bad} on question: {row.get('user_input', row.get('question'))}")
         sys.exit(1)
 
-    return result
+    return df
 
 def main():
     parser = argparse.ArgumentParser()
@@ -110,7 +127,7 @@ def main():
 
     vector_store = load_vector_store()
     outputs = collect_outputs(vector_store, args.dataset)
-    df = run_ragas(outputs).to_pandas()
+    df = run_ragas(outputs)
     
     results = {
         "faithfulness": float(df["faithfulness"].mean()),
