@@ -69,7 +69,7 @@ def run_ragas(outputs: list[dict]) -> pd.DataFrame:
         "ground_truth": [item["ground_truth"] for item in outputs],
     })
 
-    fast_config = RunConfig(timeout=700, max_workers=16, log_tenacity=True)
+    fast_config = RunConfig(timeout=1000, max_workers=16, log_tenacity=True)
     slow_config = RunConfig(timeout=700, max_workers=2, log_tenacity=True)
 
     def run_fast():
