@@ -66,21 +66,31 @@ def run_ragas(outputs: list[dict]) -> None:
         }
     )
 
-    run_config = RunConfig(
-            timeout=700,
-            max_workers=16,
-            log_tenacity=True,
-        )
-
     langfuse_handler = CallbackHandler()  # picks up LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST
                                                # from the env vars already set in evaluate.yml — no extra args needed
     
-    result = evaluate(
+    # Metrics that don't call embeddings synchronously — safe at high concurrency
+    fast_config = RunConfig(timeout=700, max_workers=16, log_tenacity=True)
+    result_fast = evaluate(
         dataset=dataset,
-        metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+        metrics=[faithfulness, context_precision, context_recall],
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
-        run_config=run_config,
+        run_config=fast_config,
+        callbacks=[langfuse_handler],
+    )
+
+    # answer_relevancy calls embed_query()/embed_documents() synchronously inside
+    # its async scorer (ragas/metrics/_answer_relevance.py), which blocks the whole
+    # event loop for its duration — so it can't share a high-concurrency pool with
+    # anything else without stalling it. Run it alone, at low concurrency.
+    slow_config = RunConfig(timeout=700, max_workers=2, log_tenacity=True)
+    result_slow = evaluate(
+        dataset=dataset,
+        metrics=[answer_relevancy],
+        llm=get_ragas_llm(),
+        embeddings=get_ragas_embeddings(),
+        run_config=slow_config,
         callbacks=[langfuse_handler],
     )
 
@@ -88,7 +98,8 @@ def run_ragas(outputs: list[dict]) -> None:
     from langfuse import get_client
     get_client().flush()
     
-    df = result.to_pandas()
+    df = result_fast.to_pandas()
+    df["answer_relevancy"] = result_slow.to_pandas()["answer_relevancy"]
     df.to_csv(RESULTS_PATH, index=False)   # save first so the failing rows can be inspected
     print(f"Per-query results saved to {RESULTS_PATH}")
     
@@ -100,7 +111,49 @@ def run_ragas(outputs: list[dict]) -> None:
             print(f"::error::NaN score for {bad} on question: {row.get('user_input', row.get('question'))}")
         sys.exit(1)
 
-    return result
+    return result_fast | result_slow
+
+
+
+
+
+def run_ragas(outputs: list[dict]) -> None:
+    dataset = Dataset.from_dict({...})  # unchanged
+
+    langfuse_handler = CallbackHandler()
+
+    # Metrics that don't call embeddings synchronously — safe at high concurrency
+    fast_config = RunConfig(timeout=700, max_workers=16, log_tenacity=True)
+    result_fast = evaluate(
+        dataset=dataset,
+        metrics=[faithfulness, context_precision, context_recall],
+        llm=get_ragas_llm(),
+        embeddings=get_ragas_embeddings(),
+        run_config=fast_config,
+        callbacks=[langfuse_handler],
+    )
+
+    # answer_relevancy calls embed_query()/embed_documents() synchronously inside
+    # its async scorer (ragas/metrics/_answer_relevance.py), which blocks the whole
+    # event loop for its duration — so it can't share a high-concurrency pool with
+    # anything else without stalling it. Run it alone, at low concurrency.
+    slow_config = RunConfig(timeout=700, max_workers=2, log_tenacity=True)
+    result_slow = evaluate(
+        dataset=dataset,
+        metrics=[answer_relevancy],
+        llm=get_ragas_llm(),
+        embeddings=get_ragas_embeddings(),
+        run_config=slow_config,
+        callbacks=[langfuse_handler],
+    )
+
+    df = result_fast.to_pandas()
+    df["answer_relevancy"] = result_slow.to_pandas()["answer_relevancy"]
+    ...
+
+
+
+
 
 def main():
     parser = argparse.ArgumentParser()
