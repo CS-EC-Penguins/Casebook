@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import logging
 from concurrent.futures import ThreadPoolExecutor
+import pandas as pd
 
 from langfuse.langchain import CallbackHandler   # not langfuse.callback — that path is gone in 4.x
 from datasets import Dataset
