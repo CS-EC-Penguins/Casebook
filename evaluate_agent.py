@@ -74,7 +74,6 @@ def run_ragas(outputs: list[dict]) -> None:
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
         run_config=run_config,
-        raise_exceptions=True,
     )
 
     df = result.to_pandas()
