@@ -4,7 +4,9 @@ import math
 import json
 from pathlib import Path
 import sys
+import logging
 
+from langfuse.langchain import CallbackHandler   # not langfuse.callback — that path is gone in 4.x
 from datasets import Dataset
 from ragas import evaluate, RunConfig
 from ragas.metrics import (
@@ -17,6 +19,8 @@ from ragas.metrics import (
 from graph_agent import ask_agent
 from evaluation.ragas_config import get_ragas_embeddings, get_ragas_llm
 from pipeline import load_vector_store
+
+logging.basicConfig(level=logging.INFO)
 
 
 DATASET_PATH = Path("evaluation/golden_dataset.json")
@@ -67,6 +71,9 @@ def run_ragas(outputs: list[dict]) -> None:
             max_workers=16,
             log_tenacity=True,
         )
+
+    langfuse_handler = CallbackHandler()  # picks up LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST
+                                               # from the env vars already set in evaluate.yml — no extra args needed
     
     result = evaluate(
         dataset=dataset,
@@ -74,9 +81,13 @@ def run_ragas(outputs: list[dict]) -> None:
         llm=get_ragas_llm(),
         embeddings=get_ragas_embeddings(),
         run_config=run_config,
-        raise_exceptions=True,
+        callbacks=[langfuse_handler],
     )
 
+     # short-lived CI process: force the export instead of relying on atexit
+    from langfuse import get_client
+    get_client().flush()
+    
     df = result.to_pandas()
     df.to_csv(RESULTS_PATH, index=False)   # save first so the failing rows can be inspected
     print(f"Per-query results saved to {RESULTS_PATH}")
